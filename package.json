@@ -1,0 +1,23 @@
+{
+  "name": "sustainability-hub",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.18.0",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@12.18.0",
+  "devDependencies": {
+    "turbo": "^2.11.11",
+    "typescript": "~6.0.3"
+  }
+}

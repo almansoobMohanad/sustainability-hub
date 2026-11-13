@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+build/
+*.tsbuildinfo
+
+# Tool caches
+.turbo/
+.vite/
+.eslintcache
+coverage/
+
+# Logs
+logs/
+*.log
+
+# Environment & secrets (commit only the example file)
+.env
+.env.*
+!.env.example
+*.local
+
+# Editors & OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
