@@ -1,0 +1,13 @@
+{
+  // Save every file with LF line endings (matches .gitattributes/.editorconfig)
+  "files.eol": "\n",
+
+  // Treat CSS as Tailwind CSS so @apply / @theme / @custom-variant are understood
+  // (requires the Tailwind CSS IntelliSense extension)
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+
+  // Use the workspace TypeScript version, not the one bundled with VS Code
+  "js/ts.tsdk.path": "node_modules/typescript/lib"
+}
