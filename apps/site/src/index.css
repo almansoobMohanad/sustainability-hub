@@ -1,0 +1,118 @@
+/* Shared theme, base styles and utilities live in packages/ui */
+@import "@hub/ui/styles.css";
+
+/* Scan this app's own files for Tailwind classes */
+@source "./";
+
+/* -------------------------------------------------------------------------
+   Custom utilities
+   ------------------------------------------------------------------------- */
+
+/*
+  text-shimmer: a green highlight that sweeps across text from left to right,
+  then pauses before repeating. Used on the landing page headline.
+
+  How it works: the text is filled with a gradient (normal text colour with a
+  green band in the middle) that is 3x wider than the text. Animating
+  background-position slides that band across the letters.
+*/
+@keyframes text-shimmer {
+  0% {
+    background-position: 100% 0; /* green band just off the left edge */
+  }
+  45%,
+  100% {
+    background-position: 0% 0; /* band has passed off the right edge, then pause */
+  }
+}
+
+@utility text-shimmer {
+  --shimmer-color: oklch(0.596 0.145 163.225); /* emerald-600 */
+  background-image: linear-gradient(
+    100deg,
+    var(--foreground) 40%,
+    var(--shimmer-color) 50%,
+    var(--foreground) 60%
+  );
+  background-size: 300% 100%;
+  background-position: 0% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shimmer 6s ease-in-out infinite;
+
+  @variant dark {
+    --shimmer-color: oklch(0.765 0.177 163.223); /* emerald-400, brighter on dark */
+  }
+
+  /* Respect the OS "reduce motion" setting: plain text, no animation */
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    background-image: none;
+    color: var(--foreground);
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Leaf visual (src/features/landing/LeafVisual.tsx)
+   ------------------------------------------------------------------------- */
+
+/* The leaf grows in from slightly smaller and tilted */
+@keyframes leaf-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.9) rotate(-6deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Veins "draw" themselves: the dash offset slides from hidden (1) to visible (0) */
+@keyframes leaf-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Gentle back-and-forth sway */
+@keyframes leaf-sway {
+  0%,
+  100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.5deg);
+  }
+}
+
+/* transform-box: view-box lets transform-origin use SVG coordinates
+   (the pivot is set inline in the component: the bottom of the stem) */
+.leaf-grow {
+  transform-box: view-box;
+  animation: leaf-grow 1s ease-out both;
+}
+
+.leaf-sway {
+  transform-box: view-box;
+  animation: leaf-sway 9s ease-in-out 1s infinite;
+}
+
+.leaf-draw {
+  stroke-dasharray: 1; /* works because each path has pathLength="1" */
+  stroke-dashoffset: 1;
+  animation: leaf-draw 1.2s ease-out forwards;
+  animation-delay: var(--leaf-delay, 0s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leaf-grow,
+  .leaf-sway {
+    animation: none;
+  }
+  .leaf-draw {
+    animation: none;
+    stroke-dashoffset: 0; /* show the veins immediately */
+  }
+}
