@@ -1,5 +1,5 @@
+import { Link } from '@tanstack/react-router'
 import { Leaf, Menu } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -10,12 +10,18 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { isActivePath, siteNav } from './site-nav'
+import { siteNav } from './site-nav'
+
+/*
+  Navigation links use the router's <Link>, which switches pages instantly
+  (no full page reload) and marks the current page itself: it adds
+  data-status="active" and aria-current="page" to the link, which the classes
+  below use for the highlight. "Home" only counts as active on exactly "/".
+*/
+const navLinkClass =
+  'text-muted-foreground data-[status=active]:bg-muted data-[status=active]:text-foreground'
 
 export function SiteHeader() {
-  // Temporary: read the URL directly. The router will provide this later.
-  const pathname = window.location.pathname
-
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       {/*
@@ -26,37 +32,25 @@ export function SiteHeader() {
       */}
       <div className="grid h-16 grid-cols-[1fr_auto_1fr] items-center px-page">
         {/* Left: project name */}
-        <a
-          href="/"
+        <Link
+          to="/"
           className="flex items-center gap-2 justify-self-start font-semibold tracking-tight"
         >
           <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-600 text-white">
             <Leaf className="size-4" aria-hidden />
           </span>
           Sustainability Hub
-        </a>
+        </Link>
 
         {/* Centre: page links (hidden on small screens, see menu below) */}
         <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
-          {siteNav.map((item) => {
-            const active = isActivePath(item.href, pathname)
-            return (
-              <Button
-                key={item.href}
-                variant="ghost"
-                asChild
-                className={cn(!active && 'text-muted-foreground')}
-              >
-                <a
-                  href={item.href}
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(active && 'bg-muted')}
-                >
-                  {item.label}
-                </a>
-              </Button>
-            )
-          })}
+          {siteNav.map((item) => (
+            <Button key={item.to} variant="ghost" asChild className={navLinkClass}>
+              <Link to={item.to} activeOptions={{ exact: item.to === '/' }}>
+                {item.label}
+              </Link>
+            </Button>
+          ))}
         </nav>
 
         {/*
@@ -65,6 +59,7 @@ export function SiteHeader() {
           col-start-3 keeps it in the right column even when the nav is hidden.
         */}
         <div className="col-start-3 flex items-center gap-2 justify-self-end">
+          {/* /signup doesn't exist yet (comes with auth), so this is a plain link for now */}
           <Button className="hidden rounded-full px-4 sm:inline-flex" asChild>
             <a href="/signup">Get started</a>
           </Button>
@@ -81,26 +76,15 @@ export function SiteHeader() {
                 <SheetDescription className="sr-only">Site navigation</SheetDescription>
               </SheetHeader>
               <nav aria-label="Mobile" className="flex flex-col gap-1 px-4">
-                {siteNav.map((item) => {
-                  const active = isActivePath(item.href, pathname)
-                  return (
-                    <SheetClose key={item.href} asChild>
-                      <Button
-                        variant="ghost"
-                        asChild
-                        className={cn('justify-start', !active && 'text-muted-foreground')}
-                      >
-                        <a
-                          href={item.href}
-                          aria-current={active ? 'page' : undefined}
-                          className={cn(active && 'bg-muted')}
-                        >
-                          {item.label}
-                        </a>
-                      </Button>
-                    </SheetClose>
-                  )
-                })}
+                {siteNav.map((item) => (
+                  <SheetClose key={item.to} asChild>
+                    <Button variant="ghost" asChild className={`justify-start ${navLinkClass}`}>
+                      <Link to={item.to} activeOptions={{ exact: item.to === '/' }}>
+                        {item.label}
+                      </Link>
+                    </Button>
+                  </SheetClose>
+                ))}
               </nav>
               <div className="mt-auto p-4">
                 <SheetClose asChild>
