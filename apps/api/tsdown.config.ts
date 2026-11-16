@@ -3,10 +3,11 @@ import { defineConfig } from 'tsdown'
 
 /*
   Production build: bundles the API, our workspace packages (@hub/db, plain
-  TypeScript source) and every third-party package into ONE self-contained file,
-  dist/index.mjs. It runs with just `node dist/index.mjs` and needs no
-  node_modules on the server, which keeps Docker images small and is what the
-  desktop installer will package later.
+  TypeScript source) and every third-party package into the self-contained
+  dist/ folder: index.mjs plus a few chunks that some libraries load on demand
+  (e.g. Better Auth's optional database drivers). It runs with just
+  `node dist/index.mjs` and needs no node_modules on the server, which keeps
+  Docker images small and is what the desktop installer will package later.
 
   Database migrations are copied next to the bundle so it can migrate on startup.
 */

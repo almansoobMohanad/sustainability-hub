@@ -8,19 +8,24 @@
     "build": "tsdown",
     "start": "node dist/index.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "auth:schema": "auth generate --config src/auth/cli-config.ts --output ../../packages/db/src/schema/auth.ts --yes && node scripts/finish-auth-schema.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.8",
     "@hono/zod-openapi": "^1.6.3",
     "@hub/db": "workspace:*",
     "@scalar/hono-api-reference": "^0.12.20",
+    "better-auth": "^1.7.25",
     "hono": "^4.13.18",
+    "nodemailer": "^10.5.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.6",
+    "@types/nodemailer": "^8.0.2",
+    "auth": "^1.7.25",
     "eslint": "^10.14.0",
     "globals": "^17.13.0",
     "tsdown": "^0.23.7",
