@@ -1,0 +1,15 @@
+/*
+  Where the product app (apps/app) lives. The site and the app are separate
+  apps on separate addresses, so links between them are full URLs.
+
+  - Local development: the app runs on http://localhost:5174 (the default here).
+  - Deployed: set VITE_APP_URL when building the site, e.g.
+    VITE_APP_URL=https://app.example.com/ (see apps/site/.env.example).
+*/
+export const APP_URL = import.meta.env.VITE_APP_URL ?? 'http://localhost:5174/'
+
+/**
+ * Where "Get started" goes. For now that's the app itself (no accounts yet);
+ * once auth exists this becomes the app's sign-up page, e.g. new URL('signup', APP_URL).
+ */
+export const GET_STARTED_URL = APP_URL

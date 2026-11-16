@@ -1,0 +1,49 @@
+/* Shared theme, base styles and utilities live in packages/ui */
+@import "@hub/ui/styles.css";
+
+/* Scan this app's own files for Tailwind classes */
+@source "./";
+
+/* -------------------------------------------------------------------------
+   Chart colours: the three GHG scopes
+   ------------------------------------------------------------------------- */
+
+/*
+  Categorical slots 1-3 of the validated data-viz palette (blue, orange, aqua),
+  checked with the palette validator against this app's surfaces in both modes:
+  all pairs pass colour-blind and normal-vision separation. Scope 3 (aqua) is
+  just under 3:1 contrast on white, so charts always ship a legend + table view.
+  Text never uses these colours; they are for marks (bars, swatches) only.
+*/
+:root {
+  --scope-1: #2a78d6;
+  --scope-2: #eb6834;
+  --scope-3: #1baf7a;
+  /* Change indicators (text): good = lower emissions, bad = higher */
+  --delta-good: #006300;
+  --delta-bad: #d03b3b;
+}
+
+.dark {
+  --scope-1: #3987e5;
+  --scope-2: #d95926;
+  --scope-3: #199e70;
+  --delta-good: #0ca30c;
+  --delta-bad: #e66767;
+}
+
+/* -------------------------------------------------------------------------
+   Sidebar resizing (see components/sidebar-resize-handle.tsx)
+   ------------------------------------------------------------------------- */
+
+/* While dragging the sidebar edge: follow the pointer instantly (no width
+   animation), show the resize cursor everywhere, and don't select text. */
+body.sidebar-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.sidebar-resizing [data-slot="sidebar-gap"],
+body.sidebar-resizing [data-slot="sidebar-container"] {
+  transition: none;
+}

@@ -11,6 +11,7 @@ build/
 .turbo/
 .vite/
 .eslintcache
+.tanstack/
 coverage/
 
 # Logs
@@ -22,6 +23,9 @@ logs/
 .env.*
 !.env.example
 *.local
+
+# Local notes for AI coding agents (kept on this machine only, never pushed)
+AGENTS.md
 
 # Editors & OS
 .vscode/*
