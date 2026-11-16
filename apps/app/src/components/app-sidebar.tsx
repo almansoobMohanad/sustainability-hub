@@ -1,4 +1,6 @@
-import { Link, useMatchRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link, useMatchRoute, useNavigate } from '@tanstack/react-router'
 import { ChevronsUpDown, Globe, Leaf, LogOut } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@hub/ui/components/avatar'
 import {
@@ -21,12 +23,20 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@hub/ui/components/sidebar'
+import { sessionQueryOptions } from '@/features/auth/session'
+import { authClient } from '@/lib/auth-client'
 import { appNav } from '@/lib/nav'
 import { SITE_URL } from '@/lib/site-links'
 import { SidebarResizeHandle } from './sidebar-resize-handle'
 
-/** Placeholder until authentication exists. */
-const DEMO_USER = { name: 'Demo user', role: 'Manager', company: 'Demo Company Sdn Bhd', initials: 'DU' }
+/** Placeholder until companies exist (next step after sign-in). */
+const DEMO_COMPANY = 'Demo Company Sdn Bhd'
+
+/** "Aisyah Rahman" -> "AR" for the avatar. */
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? (parts.at(-1)?.[0] ?? '') : '')).toUpperCase() || '?'
+}
 
 type Props = {
   width: number
@@ -36,6 +46,24 @@ type Props = {
 
 export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
   const matchRoute = useMatchRoute()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  // Always present here: _app.tsx only renders this layout for signed-in people
+  const { data: session } = useQuery(sessionQueryOptions)
+  const user = session?.user
+  const [signingOut, setSigningOut] = useState(false)
+
+  async function signOut() {
+    setSigningOut(true)
+    try {
+      await authClient.signOut()
+    } finally {
+      // Forget everything cached for this person, so nothing of theirs is
+      // shown to whoever signs in next in this browser.
+      queryClient.clear()
+      await navigate({ to: '/sign-in', search: { notice: 'signed-out' } })
+    }
+  }
 
   return (
     // collapsible="icon": collapses to a narrow strip of icons instead of disappearing
@@ -50,7 +78,7 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
                 </span>
                 <span className="grid flex-1 text-left leading-tight">
                   <span className="truncate font-semibold">Sustainability Hub</span>
-                  <span className="truncate text-xs text-muted-foreground">{DEMO_USER.company}</span>
+                  <span className="truncate text-xs text-muted-foreground">{DEMO_COMPANY}</span>
                 </span>
               </Link>
             </SidebarMenuButton>
@@ -90,25 +118,23 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg" tooltip={DEMO_USER.name}>
+                <SidebarMenuButton size="lg" tooltip={user?.name ?? 'Account'}>
                   <Avatar className="size-8 rounded-lg">
                     <AvatarFallback className="rounded-lg bg-emerald-50 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                      {DEMO_USER.initials}
+                      {initials(user?.name ?? '')}
                     </AvatarFallback>
                   </Avatar>
                   <span className="grid flex-1 text-left leading-tight">
-                    <span className="truncate font-medium">{DEMO_USER.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">{DEMO_USER.role}</span>
+                    <span className="truncate font-medium">{user?.name}</span>
+                    <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
                   </span>
                   <ChevronsUpDown className="ml-auto size-4" aria-hidden />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-(--radix-dropdown-menu-trigger-width) min-w-56">
                 <DropdownMenuLabel className="font-normal">
-                  <span className="block font-medium">{DEMO_USER.name}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    Accounts and sign-in are coming soon
-                  </span>
+                  <span className="block truncate font-medium">{user?.name}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{user?.email}</span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
@@ -118,9 +144,9 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
                     Back to website
                   </a>
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled>
+                <DropdownMenuItem onSelect={signOut} disabled={signingOut}>
                   <LogOut aria-hidden />
-                  Sign out
+                  {signingOut ? 'Signing out...' : 'Sign out'}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

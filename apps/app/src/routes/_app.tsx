@@ -1,16 +1,26 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { Outlet, createFileRoute } from '@tanstack/react-router'
+import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 import { SidebarInset, SidebarProvider } from '@hub/ui/components/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SIDEBAR_DEFAULT_WIDTH, clampSidebarWidth } from '@/components/sidebar-width'
+import { sessionQueryOptions } from '@/features/auth/session'
 
 /*
   Layout for every app page: resizable sidebar on the left, page on the right.
   "_app" is a pathless layout route: it adds no URL segment, so its child
   _app/index.tsx is "/" and _app/emissions/new.tsx is "/emissions/new".
+
+  Every page in here requires sign-in: beforeLoad runs before any of them
+  loads, and sends signed-out visitors to /sign-in, remembering where they
+  were going. (This guards the UI; the API checks the session on its own.)
 */
 export const Route = createFileRoute('/_app')({
+  beforeLoad: async ({ context, location }) => {
+    const session = await context.queryClient.ensureQueryData(sessionQueryOptions)
+    if (!session) throw redirect({ to: '/sign-in', search: { redirect: location.href } })
+    return { session }
+  },
   component: AppLayout,
 })
 

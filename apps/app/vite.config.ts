@@ -27,7 +27,12 @@ export default defineConfig({
     // In development, forward /api/* calls to the Hono API so the browser
     // sees one origin (no CORS setup needed, cookies just work).
     proxy: {
-      '/api': 'http://127.0.0.1:3000',
+      '/api': {
+        target: 'http://127.0.0.1:3000',
+        // Adds X-Forwarded-For with the browser's address, so the API can rate
+        // limit per client (it trusts exactly one proxy hop in development).
+        xfwd: true,
+      },
     },
   },
   preview: {

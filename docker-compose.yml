@@ -1,5 +1,5 @@
-# Services for local development.
-#   Start:  pnpm db:up      (waits until Postgres is ready)
+# Services for local development: Postgres + Mailpit (a fake mail server).
+#   Start:  pnpm db:up      (starts both, waits until they're ready)
 #   Stop:   pnpm db:down    (your data is kept in the "pgdata" volume)
 #   Wipe:   docker compose down -v   (deletes the volume = ALL local data)
 #
@@ -25,6 +25,18 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+
+  # Catches every email the API sends in development (verification links,
+  # password resets) so nothing goes to real inboxes.
+  # Inbox in the browser: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025" # SMTP: the API sends here
+      - "127.0.0.1:8025:8025" # web inbox
+    environment:
+      MP_MAX_MESSAGES: 500 # keep only the newest 500 emails
 
 volumes:
   pgdata:
