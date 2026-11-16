@@ -5,7 +5,11 @@
   // Treat CSS as Tailwind CSS so @apply / @theme / @custom-variant are understood
   // (requires the Tailwind CSS IntelliSense extension)
   "files.associations": {
-    "*.css": "tailwindcss"
+    "*.css": "tailwindcss",
+    // Our SQL is PostgreSQL (Drizzle migrations). Open it as plain SQL so
+    // dialect-specific extensions (e.g. Oracle SQL Developer, which claims every
+    // .sql file) don't report valid Postgres syntax as errors.
+    "*.sql": "sql"
   },
 
   // Use the workspace TypeScript version, not the one bundled with VS Code
