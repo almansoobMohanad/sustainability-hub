@@ -1,3 +1,9 @@
-﻿packages:
+packages:
   - "apps/*"
   - "packages/*"
+
+# Dependencies allowed to run install scripts. pnpm blocks them by default (a
+# supply-chain protection); approve new ones with: pnpm approve-builds <name>
+# esbuild: its script only checks that the right compiler binary is installed.
+allowBuilds:
+  esbuild: true

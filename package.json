@@ -6,7 +6,12 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:generate": "pnpm --filter @hub/db db:generate",
+    "db:migrate": "pnpm --filter @hub/db db:migrate",
+    "db:studio": "pnpm --filter @hub/db db:studio"
   },
   "devEngines": {
     "packageManager": {
