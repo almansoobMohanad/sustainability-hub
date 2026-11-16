@@ -8,8 +8,5 @@
 */
 export const APP_URL = import.meta.env.VITE_APP_URL ?? 'http://localhost:5174/'
 
-/**
- * Where "Get started" goes. For now that's the app itself (no accounts yet);
- * once auth exists this becomes the app's sign-up page, e.g. new URL('signup', APP_URL).
- */
-export const GET_STARTED_URL = APP_URL
+/** Where "Get started" goes: the app's sign-up page. */
+export const GET_STARTED_URL = new URL('sign-up', APP_URL).href
