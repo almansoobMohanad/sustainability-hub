@@ -1,0 +1,30 @@
+# Services for local development.
+#   Start:  pnpm db:up      (waits until Postgres is ready)
+#   Stop:   pnpm db:down    (your data is kept in the "pgdata" volume)
+#   Wipe:   docker compose down -v   (deletes the volume = ALL local data)
+#
+# The password here is for local development only. Real deployments get their
+# own credentials (AWS Secrets Manager, or the desktop app's setup wizard).
+name: sustainability-hub
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hub
+      POSTGRES_PASSWORD: hub
+      POSTGRES_DB: sustainability_hub
+    ports:
+      # 127.0.0.1 = reachable from this PC only, not from other devices on the network
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hub -d sustainability_hub"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:
