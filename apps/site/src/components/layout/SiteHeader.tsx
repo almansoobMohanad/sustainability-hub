@@ -10,6 +10,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@hub/ui/components/sheet'
+import { GET_STARTED_URL } from '@/lib/app-links'
 import { siteNav } from './site-nav'
 
 /*
@@ -59,9 +60,9 @@ export function SiteHeader() {
           col-start-3 keeps it in the right column even when the nav is hidden.
         */}
         <div className="col-start-3 flex items-center gap-2 justify-self-end">
-          {/* /signup doesn't exist yet (comes with auth), so this is a plain link for now */}
+          {/* Goes to the product app (a separate app, so a plain <a>, not <Link>); see lib/app-links.ts */}
           <Button className="hidden rounded-full px-4 sm:inline-flex" asChild>
-            <a href="/signup">Get started</a>
+            <a href={GET_STARTED_URL}>Get started</a>
           </Button>
 
           <Sheet>
@@ -89,7 +90,7 @@ export function SiteHeader() {
               <div className="mt-auto p-4">
                 <SheetClose asChild>
                   <Button className="h-11 w-full rounded-full text-base" asChild>
-                    <a href="/signup">Get started</a>
+                    <a href={GET_STARTED_URL}>Get started</a>
                   </Button>
                 </SheetClose>
               </div>

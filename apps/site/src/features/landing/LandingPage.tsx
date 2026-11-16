@@ -4,6 +4,7 @@ import { Button } from '@hub/ui/components/button'
 import { FeaturesSection } from './FeaturesSection'
 import { LeafVisual } from './LeafVisual'
 import { SectionDivider } from './SectionDivider'
+import { GET_STARTED_URL } from '@/lib/app-links'
 
 // The header and footer come from the shared layout in src/routes/__root.tsx.
 export function LandingPage() {
@@ -35,13 +36,13 @@ export function LandingPage() {
                 Pill-shaped and a bit larger than the default "lg" size:
                 h-11 = 44px tall, rounded-full = fully rounded ends.
               */}
-              {/* /signup will be the registration page once auth is built */}
+              {/* Goes to the product app (apps/app); see lib/app-links.ts */}
               <Button
                 size="lg"
                 className="h-11 rounded-full px-6 text-base has-data-[icon=inline-end]:pr-5"
                 asChild
               >
-                <a href="/signup">
+                <a href={GET_STARTED_URL}>
                   Get started
                   <ArrowRight data-icon="inline-end" aria-hidden />
                 </a>

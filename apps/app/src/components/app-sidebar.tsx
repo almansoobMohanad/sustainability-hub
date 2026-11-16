@@ -22,6 +22,7 @@ import {
   SidebarMenuItem,
 } from '@hub/ui/components/sidebar'
 import { appNav } from '@/lib/nav'
+import { SITE_URL } from '@/lib/site-links'
 import { SidebarResizeHandle } from './sidebar-resize-handle'
 
 /** Placeholder until authentication exists. */
@@ -111,8 +112,8 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  {/* The public website (apps/site); its URL will come from config later */}
-                  <a href="http://localhost:5173/">
+                  {/* The public website (apps/site); address set in lib/site-links.ts */}
+                  <a href={SITE_URL}>
                     <Globe aria-hidden />
                     Back to website
                   </a>
