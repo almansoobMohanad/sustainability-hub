@@ -7,6 +7,7 @@ import { secureHeaders } from 'hono/secure-headers'
 import type { Database } from '@hub/db'
 import type { Auth } from './auth/auth'
 import { clientIp } from './auth/client-ip'
+import { authOptionsRoutes } from './routes/auth-options'
 import { healthRoutes } from './routes/health'
 
 /*
@@ -29,6 +30,8 @@ type AppDeps = {
   auth: Auth
   /** See TRUST_PROXY_HOPS in env.ts */
   trustedProxyHops: number
+  /** Whether "Continue with Google" is configured */
+  googleSignIn: boolean
 }
 
 /**
@@ -42,7 +45,7 @@ function redactSecrets(line: string) {
     .replace(/([?&](?:token|code)=)[^\s&]+/g, '$1[redacted]')
 }
 
-export function createApp({ db, auth, trustedProxyHops }: AppDeps) {
+export function createApp({ db, auth, trustedProxyHops, googleSignIn }: AppDeps) {
   const app = new OpenAPIHono().basePath('/api')
 
   app.use(requestId()) // X-Request-Id header, handy for matching logs to requests
@@ -50,6 +53,7 @@ export function createApp({ db, auth, trustedProxyHops }: AppDeps) {
   app.use(secureHeaders()) // safe defaults: nosniff, frame protection, etc.
 
   app.route('/', healthRoutes(db))
+  app.route('/', authOptionsRoutes({ google: googleSignIn }))
 
   // Authentication: everything under /api/auth is handled by Better Auth.
   // Auth requests are small; refuse big bodies before they're read.

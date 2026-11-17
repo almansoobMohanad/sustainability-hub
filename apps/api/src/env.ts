@@ -66,6 +66,18 @@ const EnvSchema = z.object({
    * internet access; offline installs can turn it off.
    */
   CHECK_BREACHED_PASSWORDS: z.stringbool().default(true),
+
+  /**
+   * "Continue with Google" (optional). Both come from Google Cloud Console
+   * (APIs & Services > Credentials > OAuth client ID). Leave both unset to turn
+   * Google sign-in off: offline/desktop installs can't use it.
+   */
+  // Empty values (e.g. a copied .env.example) count as "not set"
+  GOOGLE_CLIENT_ID: z.string().trim().optional().transform((value) => value || undefined),
+  GOOGLE_CLIENT_SECRET: z.string().trim().optional().transform((value) => value || undefined),
+}).refine((value) => Boolean(value.GOOGLE_CLIENT_ID) === Boolean(value.GOOGLE_CLIENT_SECRET), {
+  message: 'set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither',
+  path: ['GOOGLE_CLIENT_SECRET'],
 })
 
 const parsed = EnvSchema.safeParse(process.env)
@@ -76,3 +88,9 @@ if (!parsed.success) {
 
 export const env = parsed.data
 export type Env = typeof env
+
+/** Google sign-in settings, or undefined when it's turned off. */
+export const googleOAuth =
+  env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+    ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
+    : undefined

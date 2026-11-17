@@ -3,7 +3,7 @@ import { createDb, runMigrations } from '@hub/db'
 import { createApp } from './app'
 import { createAuth } from './auth/auth'
 import { createSmtpMailer } from './email/mailer'
-import { env } from './env'
+import { env, googleOAuth } from './env'
 import { waitForDatabase } from './wait-for-database'
 
 /*
@@ -28,9 +28,11 @@ const auth = createAuth({
   appUrl: env.APP_URL,
   secret: env.BETTER_AUTH_SECRET,
   checkBreachedPasswords: env.CHECK_BREACHED_PASSWORDS,
+  google: googleOAuth,
 })
+console.log(googleOAuth ? 'Google sign-in: on.' : 'Google sign-in: off (no GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).')
 
-const app = createApp({ db, auth, trustedProxyHops: env.TRUST_PROXY_HOPS })
+const app = createApp({ db, auth, trustedProxyHops: env.TRUST_PROXY_HOPS, googleSignIn: Boolean(googleOAuth) })
 
 const server = serve({ fetch: app.fetch, hostname: env.HOST, port: env.PORT }, (info) => {
   console.log(`API listening on http://${info.address}:${info.port}  (docs: /api/docs)`)
