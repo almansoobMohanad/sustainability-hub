@@ -10,6 +10,7 @@ import { AuthHeading, FormMessage } from '@/features/auth/auth-parts'
 import { sessionQueryOptions } from '@/features/auth/session'
 import { companyErrorMessage } from './company-errors'
 import { forgetCompanyData } from './me'
+import { myInvitationsQueryOptions } from './my-invitations'
 
 /*
   Opened from an invitation email (/invitations/<id>).
@@ -108,7 +109,11 @@ function SignedInInvitation({ invitationId, signedInAs }: { invitationId: string
     try {
       const { error } = await authClient.organization.rejectInvitation({ invitationId })
       if (error) setActionError(companyErrorMessage(error))
-      else setDeclined(true)
+      else {
+        setDeclined(true)
+        // So the company switcher stops listing it
+        await queryClient.invalidateQueries({ queryKey: myInvitationsQueryOptions.queryKey })
+      }
     } catch {
       setActionError(NETWORK_ERROR_MESSAGE)
     } finally {

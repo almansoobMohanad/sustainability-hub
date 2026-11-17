@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useMatchRoute, useNavigate, useRouter } from '@tanstack/react-router'
-import { Check, ChevronsUpDown, Globe, Leaf, LogOut, Plus } from 'lucide-react'
+import { Check, ChevronsUpDown, Globe, Leaf, LogOut, MailOpen, Plus } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@hub/ui/components/avatar'
 import {
   DropdownMenu,
@@ -23,9 +23,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@hub/ui/components/sidebar'
-import { ROLE_LABELS } from '@hub/shared/permissions'
+import { ROLE_LABELS, isRole } from '@hub/shared/permissions'
 import { forgetSession } from '@/features/auth/session'
 import { forgetCompanyData, useMe } from '@/features/company/me'
+import { myInvitationsQueryOptions } from '@/features/company/my-invitations'
 import { authClient } from '@/lib/auth-client'
 import { appNav } from '@/lib/nav'
 import { SITE_URL } from '@/lib/site-links'
@@ -50,6 +51,10 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
   const queryClient = useQueryClient()
   // Loaded by the _app guard: the signed-in person, their companies, the active one
   const { user, companies, company } = useMe()
+  // Invitations to other companies waiting for this person (dot + menu section)
+  const { data: invitations = [] } = useQuery(myInvitationsQueryOptions)
+  const invitationSummary =
+    invitations.length === 1 ? '1 pending invitation' : `${invitations.length} pending invitations`
   const [signingOut, setSigningOut] = useState(false)
 
   async function switchCompany(companyId: string) {
@@ -83,12 +88,25 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            {/* Company switcher: the active company, your role in it, and your other companies */}
+            {/* Company switcher: the active company, your role in it, your other
+                companies, and invitations waiting for you */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg" tooltip={company?.name ?? 'Company'}>
-                  <span className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+                <SidebarMenuButton
+                  size="lg"
+                  tooltip={invitations.length > 0 ? `${company?.name ?? 'Company'} · ${invitationSummary}` : (company?.name ?? 'Company')}
+                >
+                  <span className="relative flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
                     <Leaf className="size-4" aria-hidden />
+                    {/* Inside the logo's corner, so it also shows when the sidebar is
+                        collapsed to icons (the collapsed button clips anything outside it).
+                        Amber, not green: it must stand out against the green logo. */}
+                    {invitations.length > 0 ? (
+                      <span
+                        className="absolute top-0.5 right-0.5 size-2.5 rounded-full bg-amber-400 ring-2 ring-emerald-600"
+                        aria-hidden
+                      />
+                    ) : null}
                   </span>
                   <span className="grid flex-1 text-left leading-tight">
                     <span className="truncate font-semibold">{company?.name}</span>
@@ -96,6 +114,7 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
                       {company ? ROLE_LABELS[company.role] : null}
                     </span>
                   </span>
+                  {invitations.length > 0 ? <span className="sr-only">, {invitationSummary}</span> : null}
                   <ChevronsUpDown className="ml-auto size-4" aria-hidden />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
@@ -110,6 +129,30 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
                     {option.id === company?.id ? <Check className="size-4" aria-label="Current company" /> : null}
                   </DropdownMenuItem>
                 ))}
+                {invitations.length > 0 ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
+                      <span className="size-2 rounded-full bg-amber-400" aria-hidden />
+                      Invitations ({invitations.length})
+                    </DropdownMenuLabel>
+                    {invitations.map((invitation) => (
+                      <DropdownMenuItem key={invitation.id} asChild>
+                        {/* The invitation page shows the details with Join / Decline */}
+                        <Link to="/invitations/$invitationId" params={{ invitationId: invitation.id }}>
+                          <MailOpen aria-hidden />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate">{invitation.organizationName}</span>
+                            <span className="block text-xs text-muted-foreground">
+                              as {isRole(invitation.role) ? ROLE_LABELS[invitation.role] : invitation.role}
+                            </span>
+                          </span>
+                          <span className="text-xs text-muted-foreground">View</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                ) : null}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/create-company">

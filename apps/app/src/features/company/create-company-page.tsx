@@ -14,24 +14,13 @@ import { NETWORK_ERROR_MESSAGE } from '@/features/auth/auth-errors'
 import { AuthHeading, FieldError, FormMessage } from '@/features/auth/auth-parts'
 import { companyErrorMessage } from './company-errors'
 import { forgetCompanyData, meQueryOptions } from './me'
+import { myInvitationsQueryOptions } from './my-invitations'
 import { companySlug } from './slug'
 
 const schema = z.object({
   name: z.string().trim().min(2, 'Enter at least 2 characters').max(100, 'Use at most 100 characters'),
 })
 type Values = z.infer<typeof schema>
-
-/** Invitations waiting for the signed-in person's email address. */
-function usePendingInvitations() {
-  return useQuery({
-    queryKey: ['my-invitations'],
-    queryFn: async () => {
-      const { data, error } = await authClient.organization.listUserInvitations()
-      if (error) return []
-      return data.filter((invitation) => new Date(invitation.expiresAt) > new Date())
-    },
-  })
-}
 
 /*
   After signing up (or when someone has no company): create a company and
@@ -42,7 +31,7 @@ export function CreateCompanyPage() {
   const queryClient = useQueryClient()
   const [formError, setFormError] = useState<string | null>(null)
   const { data: me } = useQuery(meQueryOptions)
-  const { data: invitations = [] } = usePendingInvitations()
+  const { data: invitations = [] } = useQuery(myInvitationsQueryOptions)
   const hasCompany = (me?.companies.length ?? 0) > 0
   const {
     register,
