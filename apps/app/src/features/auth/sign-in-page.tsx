@@ -8,8 +8,9 @@ import { Button } from '@hub/ui/components/button'
 import { Input } from '@hub/ui/components/input'
 import { Label } from '@hub/ui/components/label'
 import { authClient } from '@/lib/auth-client'
-import { NETWORK_ERROR_MESSAGE, authErrorMessage } from './auth-errors'
-import { AuthHeading, FieldError, FormMessage } from './auth-parts'
+import { NETWORK_ERROR_MESSAGE, authErrorMessage, googleSignInErrorMessage } from './auth-errors'
+import { AuthHeading, FieldError, FormMessage, OrDivider } from './auth-parts'
+import { GoogleButton } from './google-button'
 import { PasswordInput } from './password-input'
 import { safeRedirectPath } from './redirect'
 import { forgetSession } from './session'
@@ -27,11 +28,22 @@ const NOTICES: Record<SignInNotice, string> = {
   'signed-out': 'You have signed out.',
 }
 
-export function SignInPage({ redirectTo, notice }: { redirectTo?: string; notice?: SignInNotice }) {
+type Props = {
+  redirectTo?: string
+  notice?: SignInNotice
+  /** ?error=... from a failed or cancelled Google sign-in */
+  googleError?: string
+  /** Whether "Continue with Google" is configured on this installation */
+  googleEnabled: boolean
+}
+
+export function SignInPage({ redirectTo, notice, googleError, googleEnabled }: Props) {
   const navigate = useNavigate()
   const router = useRouter()
   const queryClient = useQueryClient()
-  const [formError, setFormError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(() =>
+    googleError ? googleSignInErrorMessage(googleError) : null,
+  )
   const {
     register,
     handleSubmit,
@@ -67,6 +79,13 @@ export function SignInPage({ redirectTo, notice }: { redirectTo?: string; notice
         <FormMessage tone="error">{formError}</FormMessage>
       ) : notice ? (
         <FormMessage tone="success">{NOTICES[notice]}</FormMessage>
+      ) : null}
+
+      {googleEnabled ? (
+        <>
+          <GoogleButton redirectTo={redirectTo} onError={setFormError} />
+          <OrDivider />
+        </>
       ) : null}
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">

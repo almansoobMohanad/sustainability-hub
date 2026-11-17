@@ -40,6 +40,17 @@ export function FormMessage({ tone, children }: { tone: 'error' | 'success'; chi
   )
 }
 
+/** "or" between "Continue with Google" and the email form. */
+export function OrDivider() {
+  return (
+    <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground" role="separator" aria-label="or">
+      <span className="h-px flex-1 bg-border" />
+      <span aria-hidden>or</span>
+      <span className="h-px flex-1 bg-border" />
+    </div>
+  )
+}
+
 /** Development only: where the test emails go (Mailpit from docker-compose.yml). */
 export function DevInboxHint() {
   if (!import.meta.env.DEV) return null

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useMatchRoute, useNavigate } from '@tanstack/react-router'
 import { ChevronsUpDown, Globe, Leaf, LogOut } from 'lucide-react'
-import { Avatar, AvatarFallback } from '@hub/ui/components/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@hub/ui/components/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -120,6 +120,12 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg" tooltip={user?.name ?? 'Account'}>
                   <Avatar className="size-8 rounded-lg">
+                    {/* Google profile photo when signed up with Google; initials otherwise
+                        (and while it loads). no-referrer: Google's image servers can
+                        refuse requests that carry our page address. */}
+                    {user?.image ? (
+                      <AvatarImage src={user.image} alt="" referrerPolicy="no-referrer" className="rounded-lg" />
+                    ) : null}
                     <AvatarFallback className="rounded-lg bg-emerald-50 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                       {initials(user?.name ?? '')}
                     </AvatarFallback>

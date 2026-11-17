@@ -30,6 +30,25 @@ export function authErrorMessage(error: AuthError) {
   return 'Something went wrong. Please try again.'
 }
 
+/**
+ * Google sign-in failures arrive as /sign-in?error=<code> (set by the API after
+ * Google sends the person back). Codes are snake_case; normalise just in case.
+ */
+export function googleSignInErrorMessage(code: string) {
+  switch (code.toLowerCase().replace(/[\s-]+/g, '_')) {
+    case 'access_denied':
+      return 'Google sign-in was cancelled.'
+    case 'account_not_linked':
+    case 'unable_to_link_account':
+      return "This email already has an account that couldn't be linked to Google automatically. Sign in with your email and password instead."
+    case 'email_not_verified':
+    case 'email_not_found':
+      return "Your Google account's email isn't verified, so it can't be used to sign in. Use your email and password instead."
+    default:
+      return "Signing in with Google didn't work. Please try again."
+  }
+}
+
 /** Password errors belong next to the password field rather than at the top. */
 export function isPasswordError(error: AuthError) {
   return ['PASSWORD_COMPROMISED', 'PASSWORD_TOO_SHORT', 'PASSWORD_TOO_LONG'].includes(error.code ?? '')
