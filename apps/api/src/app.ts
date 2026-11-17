@@ -9,6 +9,7 @@ import type { Auth } from './auth/auth'
 import { clientIp } from './auth/client-ip'
 import { authOptionsRoutes } from './routes/auth-options'
 import { healthRoutes } from './routes/health'
+import { meRoutes } from './routes/me'
 
 /*
   Builds the Hono app. Kept separate from index.ts (which starts the server)
@@ -54,6 +55,7 @@ export function createApp({ db, auth, trustedProxyHops, googleSignIn }: AppDeps)
 
   app.route('/', healthRoutes(db))
   app.route('/', authOptionsRoutes({ google: googleSignIn }))
+  app.route('/', meRoutes({ db, auth }))
 
   // Authentication: everything under /api/auth is handled by Better Auth.
   // Auth requests are small; refuse big bodies before they're read.
