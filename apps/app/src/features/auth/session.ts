@@ -1,6 +1,7 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query'
 import { redirect } from '@tanstack/react-router'
 import { authClient } from '@/lib/auth-client'
+import { safeRedirectPath } from './redirect'
 
 /*
   "Who is signed in?" lives in the TanStack Query cache like any other server
@@ -23,8 +24,11 @@ export function forgetSession(queryClient: QueryClient) {
   queryClient.removeQueries({ queryKey: sessionQueryOptions.queryKey })
 }
 
-/** For sign-in/sign-up pages: someone already signed in goes to the dashboard. */
-export async function redirectIfSignedIn(queryClient: QueryClient) {
+/**
+ * For sign-in/sign-up pages: someone already signed in goes straight on, to
+ * where they were heading (?redirect=, checked to be on this site) or the dashboard.
+ */
+export async function redirectIfSignedIn(queryClient: QueryClient, redirectTo?: string) {
   const session = await queryClient.ensureQueryData(sessionQueryOptions)
-  if (session) throw redirect({ to: '/' })
+  if (session) throw redirect({ href: safeRedirectPath(redirectTo) })
 }
