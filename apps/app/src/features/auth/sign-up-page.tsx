@@ -8,7 +8,8 @@ import { Input } from '@hub/ui/components/input'
 import { Label } from '@hub/ui/components/label'
 import { authClient } from '@/lib/auth-client'
 import { NETWORK_ERROR_MESSAGE, PASSWORD_HINT, authErrorMessage, isPasswordError } from './auth-errors'
-import { AuthHeading, FieldError, FormMessage } from './auth-parts'
+import { AuthHeading, FieldError, FormMessage, OrDivider } from './auth-parts'
+import { GoogleButton } from './google-button'
 import { PasswordInput } from './password-input'
 
 // Same rules as the API (it checks again; this just gives instant feedback)
@@ -19,7 +20,7 @@ const schema = z.object({
 })
 type Values = z.infer<typeof schema>
 
-export function SignUpPage() {
+export function SignUpPage({ googleEnabled }: { googleEnabled: boolean }) {
   const navigate = useNavigate()
   const [formError, setFormError] = useState<string | null>(null)
   const {
@@ -51,6 +52,13 @@ export function SignUpPage() {
       <AuthHeading title="Create your account" description="Track, verify and report your company's emissions." />
 
       {formError ? <FormMessage tone="error">{formError}</FormMessage> : null}
+
+      {googleEnabled ? (
+        <>
+          <GoogleButton onError={setFormError} />
+          <OrDivider />
+        </>
+      ) : null}
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <div className="space-y-2">

@@ -11,12 +11,13 @@ import {
   verifyEmailMessage,
 } from '../email/templates'
 import { CLIENT_IP_HEADER } from './client-ip'
+import { deleteUnverifiedAccount } from './unverified-accounts'
 
 /*
   Authentication (Better Auth), mounted at /api/auth/*. It stores users,
   sessions, accounts and tokens in our Postgres (tables in
   packages/db/src/schema/auth.ts). The design and its reasons are in AGENTS.md,
-  section 2a. This step: email + password. Google sign-in comes next.
+  section 2a. Sign-in methods: email + password, and Google (when configured).
 */
 
 const MINUTE = 60
@@ -30,9 +31,11 @@ type AuthDeps = {
   appUrl: string
   secret: string
   checkBreachedPasswords: boolean
+  /** Google OAuth client; undefined turns "Continue with Google" off. */
+  google?: { clientId: string; clientSecret: string }
 }
 
-export function createAuth({ db, mailer, appUrl, secret, checkBreachedPasswords }: AuthDeps) {
+export function createAuth({ db, mailer, appUrl, secret, checkBreachedPasswords, google }: AuthDeps) {
   const pageUrl = (path: string) => new URL(path, appUrl).href
 
   return betterAuth({
@@ -87,6 +90,55 @@ export function createAuth({ db, mailer, appUrl, secret, checkBreachedPasswords 
       expiresIn: 1 * DAY,
       sendVerificationEmail: async ({ user, url }) => {
         sendInBackground(mailer, verifyEmailMessage(user, url))
+      },
+    },
+
+    // Sign in with Google: the server-side "authorization code" flow with PKCE
+    // and a `state` check (Better Auth handles both). The browser only ever sees
+    // a one-time code; the client secret stays on the server.
+    // Redirect URL to register in Google Cloud Console: <APP_URL>/api/auth/callback/google
+    socialProviders: google
+      ? {
+          google: {
+            clientId: google.clientId,
+            clientSecret: google.clientSecret,
+            // Default scopes only: openid, email, profile (name, email, photo).
+            // Always show Google's account chooser (people often have several).
+            prompt: 'select_account',
+            // We don't use Google One Tap (sign-in with a token sent by the
+            // browser); turning it off removes that way in entirely.
+            disableIdTokenSignIn: true,
+            // Runs once Google has proven who this is, before Better Auth looks
+            // for an existing account with the same email. Only used for its
+            // side effect; returning {} keeps Google's name/email/photo as they are.
+            mapProfileToUser: async (profile) => {
+              if (profile.email_verified === true && profile.email) {
+                const removed = await deleteUnverifiedAccount(db, profile.email)
+                if (removed) {
+                  console.info('Google sign-in: removed an unverified account with the same email (Google wins).')
+                }
+              }
+              return {}
+            },
+          },
+        }
+      : {},
+
+    // When a Google sign-in fails before we know where the person came from
+    // (e.g. an expired or forged `state`), send them to our sign-in page, which
+    // explains it (?error=state_mismatch etc.), instead of Better Auth's bare
+    // built-in error page.
+    onAPIError: { errorURL: pageUrl('/sign-in') },
+
+    account: {
+      accountLinking: {
+        // Google + an existing account with the same email become ONE account,
+        // but only when both sides proved the email: Google says email_verified
+        // AND our account's email was verified. Google is deliberately NOT in
+        // `trustedProviders` (that would link even without email_verified).
+        // Never-verified accounts are removed first (mapProfileToUser above).
+        enabled: true,
+        trustedProviders: [],
       },
     },
 
