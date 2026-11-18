@@ -1,9 +1,10 @@
 import { serve } from '@hono/node-server'
-import { createDb, runMigrations } from '@hub/db'
+import { createDb, loadFactorLibrary, runMigrations } from '@hub/db'
 import { createApp } from './app'
 import { createAuth } from './auth/auth'
 import { createSmtpMailer } from './email/mailer'
 import { env, googleOAuth } from './env'
+import { checkSectorTemplates } from './factors/sector-templates'
 import { waitForDatabase } from './wait-for-database'
 
 /*
@@ -11,7 +12,8 @@ import { waitForDatabase } from './wait-for-database'
     1. read + validate configuration (env.ts, on import)
     2. wait until Postgres answers
     3. apply new database migrations (no manual setup steps, ever)
-    4. start listening for requests
+    4. load the emission factor library (only years that are new or changed)
+    5. start listening for requests
 */
 
 const { db, pool } = createDb(env.DATABASE_URL)
@@ -20,6 +22,19 @@ await waitForDatabase(pool, { timeoutMs: env.NODE_ENV === 'production' ? 60_000 
 
 const migrations = await runMigrations(db)
 console.log(migrations.applied ? 'Database migrations are up to date.' : 'No database migrations yet.')
+
+const startedLoading = Date.now()
+const library = await loadFactorLibrary(db)
+if (!library.loaded) {
+  console.warn(`Emission factor library NOT loaded: ${library.reason}.`)
+} else if (library.reloadedYears.length > 0 || library.sourcesReloaded) {
+  console.log(
+    `Emission factor library loaded: UK ${library.reloadedYears.join(', ') || '(sources only)'} in ${Date.now() - startedLoading} ms.`,
+  )
+} else {
+  console.log(`Emission factor library is up to date (UK ${library.years[0]}-${library.years.at(-1)}).`)
+}
+if (library.loaded) await checkSectorTemplates(db)
 
 const mailer = createSmtpMailer({ url: env.SMTP_URL, from: env.EMAIL_FROM })
 const auth = createAuth({

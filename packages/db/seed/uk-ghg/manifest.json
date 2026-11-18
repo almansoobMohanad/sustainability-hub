@@ -1,0 +1,82 @@
+{
+  "format": 1,
+  "publisher": "UK Government (DESNZ / Defra)",
+  "title": "UK Government GHG Conversion Factors for Company Reporting",
+  "licence": "Open Government Licence v3.0",
+  "licenceUrl": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+  "sourcesSha256": "f562c1e96e991ad7313793eeb145ad5b1fd76e2e2164e49aba45a7208bc84d44",
+  "sets": [
+    {
+      "year": 2019,
+      "version": "v1.2",
+      "file": "factors-2019.json",
+      "factorCount": 2370,
+      "contentSha256": "d553ec59cdfe3b7f8e51b11a9efd4352aec1dff144188d1656e04af490a12884",
+      "sourceUrl": "https://assets.publishing.service.gov.uk/media/5f1ff1cc8fa8f50485f30666/conversion-factors-2019-flat-file-v01-02.xls",
+      "sourceFileSha256": "e3f26947f1107e34c012281232dfb639230b677478258d31054bfc081a26bc6e"
+    },
+    {
+      "year": 2020,
+      "version": "v1.0",
+      "file": "factors-2020.json",
+      "factorCount": 2347,
+      "contentSha256": "1de0f4ea6b4089cf2e174671f4f6f4f5a079b96f6db68bec4d4639be681151ce",
+      "sourceUrl": "https://assets.publishing.service.gov.uk/media/5edfa176d3bf7f1eb2043f01/Conversion_Factors_2020_-_Flat_file__for_automatic_processing_only_.xlsx",
+      "sourceFileSha256": "c47a39ecac3e7876b80d99e59b05b402bba068277d849ab53c522a3196d38146"
+    },
+    {
+      "year": 2021,
+      "version": "v1.0",
+      "file": "factors-2021.json",
+      "factorCount": 2415,
+      "contentSha256": "7f979c3c6852abdc983cb66cd790e83479229300a7b9f6e30b1792e66ff5a335",
+      "sourceUrl": "https://assets.publishing.service.gov.uk/media/61ee74c88fa8f505960134ec/conversion-factors-2021-flat-file-automatic-processing.xls",
+      "sourceFileSha256": "db4af6fdc0a0531f02379a8fcd4d914f7abaad0e206778f6856e29d4f16c7f40"
+    },
+    {
+      "year": 2022,
+      "version": "v1.0",
+      "file": "factors-2022.json",
+      "factorCount": 2320,
+      "contentSha256": "e9e32250459ff2b225b878e1747e2fcb748c26f8f1ece7bfd359d3e9cdc0aafe",
+      "sourceUrl": "https://assets.publishing.service.gov.uk/media/6329dcf2e90e073725585d5c/ghg-conversion-factors-2022-flat-format.xls",
+      "sourceFileSha256": "7fd13a8abbfce55732f4e5f47039525ddf023a617d9a3cbfa3ab0e118d323fdc"
+    },
+    {
+      "year": 2023,
+      "version": "update",
+      "file": "factors-2023.json",
+      "factorCount": 2327,
+      "contentSha256": "8e3483af56d05b994d2db2e08f03907af7412dd5ef4b92b165a145447c8e24e6",
+      "sourceUrl": "https://assets.publishing.service.gov.uk/media/649c536906179b00113f74a9/ghg-conversion-factors-2023-flat-file-update.xlsx",
+      "sourceFileSha256": "804885cb9d8f02bbb97dcd92b79ca294080ba892ba67e3c95fcfbae52af359a6"
+    },
+    {
+      "year": 2024,
+      "version": "v1.1",
+      "file": "factors-2024.json",
+      "factorCount": 2356,
+      "contentSha256": "ed2467c7ff741feef9b093201f2d968bf222843bdc07d91b9b4e8a94ba67abbc",
+      "sourceUrl": "https://assets.publishing.service.gov.uk/media/6722567c10b0d582ee8c4953/ghg-conversion-factors-2024-FlatFormat_v1_1.xlsx",
+      "sourceFileSha256": "1b063892ad1f00c5bc73029c016e54bc4c3050a71219202b545f8aea2f9f75c4"
+    },
+    {
+      "year": 2025,
+      "version": "v1.0",
+      "file": "factors-2025.json",
+      "factorCount": 2356,
+      "contentSha256": "6a793671b3c59196ed7437d389b3cc4397faf3e91601b1cbbee9c321fe696c44",
+      "sourceUrl": "https://assets.publishing.service.gov.uk/media/6846b6ea57f3515d9611f0dd/ghg-conversion-factors-2025-flat-format.xlsx",
+      "sourceFileSha256": "8bfdb45b81ec4a88e3bdf4584637330f62e6bd09ce1940e654c5d7b7f736de94"
+    },
+    {
+      "year": 2026,
+      "version": "revised",
+      "file": "factors-2026.json",
+      "factorCount": 2362,
+      "contentSha256": "918f49f4c116e5b0ad6e7e79e46c3644f3aed95980761b06dc76ed5136ad7ab3",
+      "sourceUrl": "https://assets.publishing.service.gov.uk/media/6a6c9748862aaf18d9c62ac9/ghg-conversion-factors-2026-flat-format-revised.xlsx",
+      "sourceFileSha256": "a9a455ab396dae226d510c7be6233748416d490c41a5d20f3dc7a0c45feecd5e"
+    }
+  ]
+}

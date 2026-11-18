@@ -19,19 +19,21 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   admin: 'Manages the company, its people and their roles, and can do everything a Manager can.',
-  manager: 'Adds emissions data and verifies or rejects entries.',
+  manager: 'Adds emissions data, verifies or rejects entries, and chooses which emission sources the company tracks.',
   member: 'Adds emissions data and views the company dashboard.',
 }
 
 /**
  * Every action that can be allowed. The first three groups are checked by
- * Better Auth itself (company settings, memberships, invitations).
+ * Better Auth itself (company settings, memberships, invitations); the rest
+ * by our own endpoints. "sources" = which emission sources the company tracks.
  */
 export const statements = {
   organization: ['update', 'delete'],
   member: ['create', 'update', 'delete'],
   invitation: ['create', 'cancel'],
   emissions: ['create', 'verify'],
+  sources: ['update'],
 } as const
 
 type Statements = typeof statements
@@ -44,9 +46,11 @@ export const rolePermissions = {
     member: ['create', 'update', 'delete'],
     invitation: ['create', 'cancel'],
     emissions: ['create', 'verify'],
+    sources: ['update'],
   },
   manager: {
     emissions: ['create', 'verify'],
+    sources: ['update'],
   },
   member: {
     emissions: ['create'],

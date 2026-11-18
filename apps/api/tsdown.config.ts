@@ -9,9 +9,11 @@ import { defineConfig } from 'tsdown'
   `node dist/index.mjs` and needs no node_modules on the server, which keeps
   Docker images small and is what the desktop installer will package later.
 
-  Database migrations are copied next to the bundle so it can migrate on startup.
+  Database migrations and the emission factor seed files are copied next to the
+  bundle so it can migrate and load the factor library on startup.
 */
 const MIGRATIONS = '../../packages/db/migrations'
+const SEED = '../../packages/db/seed'
 
 export default defineConfig({
   entry: ['src/index.ts'],
@@ -21,6 +23,6 @@ export default defineConfig({
     alwaysBundle: [/./], // bundle everything
     onlyBundle: false, // and don't print the list of bundled packages
   },
-  // The folder only exists once the first migration has been generated
-  copy: existsSync(MIGRATIONS) ? [{ from: MIGRATIONS, to: 'dist' }] : [],
+  // (existsSync: tolerate a folder that doesn't exist yet)
+  copy: [MIGRATIONS, SEED].filter((folder) => existsSync(folder)).map((folder) => ({ from: folder, to: 'dist' })),
 })

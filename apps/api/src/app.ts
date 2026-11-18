@@ -8,6 +8,8 @@ import type { Database } from '@hub/db'
 import type { Auth } from './auth/auth'
 import { clientIp } from './auth/client-ip'
 import { authOptionsRoutes } from './routes/auth-options'
+import { companyRoutes } from './routes/company'
+import { factorLibraryRoutes } from './routes/factor-library'
 import { healthRoutes } from './routes/health'
 import { meRoutes } from './routes/me'
 
@@ -18,7 +20,7 @@ import { meRoutes } from './routes/me'
   URL layout:
     /api/health         system status (unversioned, for infrastructure)
     /api/auth/...       sign-up, sign-in, sessions, email verification (Better Auth)
-    /api/v1/...         the REST API the web app uses (coming next)
+    /api/v1/...         the REST API the web app uses
     /api/openapi.json   machine-readable description of every endpoint
     /api/docs           interactive API docs generated from it
 */
@@ -56,6 +58,8 @@ export function createApp({ db, auth, trustedProxyHops, googleSignIn }: AppDeps)
   app.route('/', healthRoutes(db))
   app.route('/', authOptionsRoutes({ google: googleSignIn }))
   app.route('/', meRoutes({ db, auth }))
+  app.route('/', factorLibraryRoutes({ db, auth }))
+  app.route('/', companyRoutes({ db, auth }))
 
   // Authentication: everything under /api/auth is handled by Better Auth.
   // Auth requests are small; refuse big bodies before they're read.
