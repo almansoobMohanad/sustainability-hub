@@ -4,5 +4,7 @@
   One file per area; re-export each one below.
 */
 
-// Users, sessions, accounts, verification tokens, rate limits (Better Auth)
+// Users, sessions, accounts, verification tokens, rate limits, companies (Better Auth)
 export * from './auth'
+// Emission factor library, company settings and the sources each company tracks
+export * from './factors'
