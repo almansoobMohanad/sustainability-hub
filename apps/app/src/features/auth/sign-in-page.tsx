@@ -12,7 +12,7 @@ import { NETWORK_ERROR_MESSAGE, authErrorMessage, googleSignInErrorMessage } fro
 import { AuthHeading, FieldError, FormMessage, OrDivider } from './auth-parts'
 import { GoogleButton } from './google-button'
 import { PasswordInput } from './password-input'
-import { safeRedirectPath } from './redirect'
+import { safeRedirectPath, verifiedCallbackUrl } from './redirect'
 import { forgetSession } from './session'
 
 const schema = z.object({
@@ -55,7 +55,7 @@ export function SignInPage({ redirectTo, notice, googleError, googleEnabled }: P
     try {
       // callbackURL: where the verification link goes if the email isn't verified yet
       // (signing in with an unverified email sends a fresh link)
-      const { error } = await authClient.signIn.email({ ...values, callbackURL: '/email-verified' })
+      const { error } = await authClient.signIn.email({ ...values, callbackURL: verifiedCallbackUrl(redirectTo) })
       if (error) {
         if (error.code === 'EMAIL_NOT_VERIFIED') {
           await navigate({ to: '/check-email', search: { email: values.email, reason: 'unverified' } })
@@ -127,7 +127,11 @@ export function SignInPage({ redirectTo, notice, googleError, googleEnabled }: P
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         New to Sustainability Hub?{' '}
-        <Link to="/sign-up" className="font-medium text-foreground underline underline-offset-4">
+        <Link
+          to="/sign-up"
+          search={{ redirect: redirectTo }}
+          className="font-medium text-foreground underline underline-offset-4"
+        >
           Create an account
         </Link>
       </p>

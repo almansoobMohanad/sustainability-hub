@@ -177,6 +177,33 @@ export function passwordChangedMessage(user: User, signInUrl: string): Email {
   })
 }
 
+/** An Admin invited this email address to join their company. */
+export function invitationMessage({
+  to,
+  inviterName,
+  companyName,
+  roleLabel,
+  url,
+}: {
+  to: string
+  inviterName: string
+  companyName: string
+  roleLabel: string
+  url: string
+}): Email {
+  return compose({
+    to,
+    subject: `${inviterName} invited you to ${companyName} on ${PRODUCT}`,
+    greetingName: 'there',
+    paragraphs: [
+      `${inviterName} invited you to join ${companyName} on ${PRODUCT} as a ${roleLabel}.`,
+      `To accept, sign in or create an account with this email address (${to}). The invitation expires in 7 days.`,
+    ],
+    action: { label: 'View invitation', url },
+    footnote: "If you weren't expecting this, you can ignore this email.",
+  })
+}
+
 /**
  * Sent when someone tries to sign up with an email that already has an account.
  * The sign-up screen looks exactly the same either way (so it doesn't reveal

@@ -1,11 +1,14 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { haveIBeenPwned } from 'better-auth/plugins'
-import type { Database } from '@hub/db'
+import { haveIBeenPwned, organization } from 'better-auth/plugins'
+import { createAccessControl } from 'better-auth/plugins/access'
+import { asc, eq, type Database } from '@hub/db'
 import * as schema from '@hub/db/schema'
+import { CREATOR_ROLE, ROLE_LABELS, isRole, rolePermissions, statements } from '@hub/shared/permissions'
 import { sendInBackground, type Mailer } from '../email/mailer'
 import {
   existingAccountMessage,
+  invitationMessage,
   passwordChangedMessage,
   resetPasswordMessage,
   verifyEmailMessage,
@@ -23,6 +26,15 @@ import { deleteUnverifiedAccount } from './unverified-accounts'
 const MINUTE = 60
 const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
+
+// Company roles and what each may do, built from the shared definition in
+// packages/shared/src/permissions.ts (the app reads the same file).
+const accessControl = createAccessControl(statements)
+const companyRoles = {
+  admin: accessControl.newRole(rolePermissions.admin),
+  manager: accessControl.newRole(rolePermissions.manager),
+  member: accessControl.newRole(rolePermissions.member),
+}
 
 type AuthDeps = {
   db: Database
@@ -161,6 +173,9 @@ export function createAuth({ db, mailer, appUrl, secret, checkBreachedPasswords,
         '/request-password-reset': { window: 15 * MINUTE, max: 3 },
         '/send-verification-email': { window: 15 * MINUTE, max: 3 },
         '/reset-password': { window: 15 * MINUTE, max: 5 },
+        // Invitations send emails to addresses someone else typed in: limit them
+        '/organization/invite-member': { window: 1 * HOUR, max: 30 },
+        '/organization/create': { window: 1 * HOUR, max: 10 },
       },
     },
 
@@ -175,6 +190,25 @@ export function createAuth({ db, mailer, appUrl, secret, checkBreachedPasswords,
 
     telemetry: { enabled: false },
 
+    databaseHooks: {
+      session: {
+        create: {
+          // A new session (signing in) starts in the person's first company, so
+          // returning users land straight on their dashboard. Switching company
+          // later is stored on the session too (Better Auth's set-active).
+          before: async (session) => {
+            const [first] = await db
+              .select({ id: schema.members.organizationId })
+              .from(schema.members)
+              .where(eq(schema.members.userId, session.userId))
+              .orderBy(asc(schema.members.createdAt))
+              .limit(1)
+            return { data: { ...session, activeOrganizationId: first?.id ?? null } }
+          },
+        },
+      },
+    },
+
     plugins: [
       // Rejects passwords that appear in known data breaches. Only the first 5
       // characters of the password's SHA-1 hash leave the server (k-anonymity).
@@ -182,6 +216,39 @@ export function createAuth({ db, mailer, appUrl, secret, checkBreachedPasswords,
         enabled: checkBreachedPasswords,
         customPasswordCompromisedMessage:
           'This password has appeared in a data breach, so it is not safe to use. Choose a different one.',
+      }),
+
+      // Companies ("organizations" in Better Auth), memberships and invitations.
+      // Better Auth enforces the permissions in companyRoles on every company,
+      // member and invitation endpoint, server-side.
+      organization({
+        ac: accessControl,
+        roles: companyRoles,
+        // The creator becomes Admin. Better Auth protects this role: a company
+        // always keeps at least one, only Admins can grant it, and the last one
+        // can't leave, be removed or be demoted.
+        creatorRole: CREATOR_ROLE,
+        allowUserToCreateOrganization: true, // anyone who signs up (decided)
+        organizationLimit: 20, // per person; stops scripted abuse, plenty for consultants
+        membershipLimit: 500,
+        invitationLimit: 100, // pending invitations per company
+        invitationExpiresIn: 7 * DAY,
+        // Re-inviting the same email replaces the old invitation
+        cancelPendingInvitationsOnReInvite: true,
+        // Only the invited address, once verified, can view or accept an invitation
+        requireEmailVerificationOnInvitation: true,
+        sendInvitationEmail: async ({ id, email, role, organization: company, inviter }) => {
+          sendInBackground(
+            mailer,
+            invitationMessage({
+              to: email,
+              inviterName: inviter.user.name,
+              companyName: company.name,
+              roleLabel: isRole(role) ? ROLE_LABELS[role] : role,
+              url: pageUrl(`/invitations/${id}`),
+            }),
+          )
+        },
       }),
     ],
   })

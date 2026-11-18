@@ -13,12 +13,16 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthCheckEmailRouteImport } from './routes/_auth/check-email'
+import { Route as AuthCreateCompanyRouteImport } from './routes/_auth/create-company'
 import { Route as AuthEmailVerifiedRouteImport } from './routes/_auth/email-verified'
 import { Route as AuthForgotPasswordRouteImport } from './routes/_auth/forgot-password'
 import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AppEmissionsNewRouteImport } from './routes/_app/emissions/new'
+import { Route as AppSettingsCompanyRouteImport } from './routes/_app/settings/company'
+import { Route as AppSettingsMembersRouteImport } from './routes/_app/settings/members'
+import { Route as AuthInvitationsInvitationIdRouteImport } from './routes/_auth/invitations/$invitationId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -36,6 +40,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AuthCheckEmailRoute = AuthCheckEmailRouteImport.update({
   id: '/check-email',
   path: '/check-email',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthCreateCompanyRoute = AuthCreateCompanyRouteImport.update({
+  id: '/create-company',
+  path: '/create-company',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthEmailVerifiedRoute = AuthEmailVerifiedRouteImport.update({
@@ -68,32 +77,57 @@ const AppEmissionsNewRoute = AppEmissionsNewRouteImport.update({
   path: '/emissions/new',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsCompanyRoute = AppSettingsCompanyRouteImport.update({
+  id: '/settings/company',
+  path: '/settings/company',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsMembersRoute = AppSettingsMembersRouteImport.update({
+  id: '/settings/members',
+  path: '/settings/members',
+  getParentRoute: () => AppRoute,
+} as any)
+const AuthInvitationsInvitationIdRoute =
+  AuthInvitationsInvitationIdRouteImport.update({
+    id: '/invitations/$invitationId',
+    path: '/invitations/$invitationId',
+    getParentRoute: () => AuthRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/check-email': typeof AuthCheckEmailRoute
+  '/create-company': typeof AuthCreateCompanyRoute
   '/email-verified': typeof AuthEmailVerifiedRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
   '/reset-password': typeof AuthResetPasswordRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/emissions/new': typeof AppEmissionsNewRoute
+  '/settings/company': typeof AppSettingsCompanyRoute
+  '/settings/members': typeof AppSettingsMembersRoute
+  '/invitations/$invitationId': typeof AuthInvitationsInvitationIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/check-email': typeof AuthCheckEmailRoute
+  '/create-company': typeof AuthCreateCompanyRoute
   '/email-verified': typeof AuthEmailVerifiedRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
   '/reset-password': typeof AuthResetPasswordRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/emissions/new': typeof AppEmissionsNewRoute
+  '/settings/company': typeof AppSettingsCompanyRoute
+  '/settings/members': typeof AppSettingsMembersRoute
+  '/invitations/$invitationId': typeof AuthInvitationsInvitationIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
   '/_auth/check-email': typeof AuthCheckEmailRoute
+  '/_auth/create-company': typeof AuthCreateCompanyRoute
   '/_auth/email-verified': typeof AuthEmailVerifiedRoute
   '/_auth/forgot-password': typeof AuthForgotPasswordRoute
   '/_auth/reset-password': typeof AuthResetPasswordRoute
@@ -101,33 +135,45 @@ export interface FileRoutesById {
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_app/': typeof AppIndexRoute
   '/_app/emissions/new': typeof AppEmissionsNewRoute
+  '/_app/settings/company': typeof AppSettingsCompanyRoute
+  '/_app/settings/members': typeof AppSettingsMembersRoute
+  '/_auth/invitations/$invitationId': typeof AuthInvitationsInvitationIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/check-email'
+    | '/create-company'
     | '/email-verified'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
     | '/emissions/new'
+    | '/settings/company'
+    | '/settings/members'
+    | '/invitations/$invitationId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/check-email'
+    | '/create-company'
     | '/email-verified'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
     | '/emissions/new'
+    | '/settings/company'
+    | '/settings/members'
+    | '/invitations/$invitationId'
   id:
     | '__root__'
     | '/_app'
     | '/_auth'
     | '/_auth/check-email'
+    | '/_auth/create-company'
     | '/_auth/email-verified'
     | '/_auth/forgot-password'
     | '/_auth/reset-password'
@@ -135,6 +181,9 @@ export interface FileRouteTypes {
     | '/_auth/sign-up'
     | '/_app/'
     | '/_app/emissions/new'
+    | '/_app/settings/company'
+    | '/_app/settings/members'
+    | '/_auth/invitations/$invitationId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -170,6 +219,13 @@ declare module '@tanstack/react-router' {
       path: '/check-email'
       fullPath: '/check-email'
       preLoaderRoute: typeof AuthCheckEmailRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/create-company': {
+      id: '/_auth/create-company'
+      path: '/create-company'
+      fullPath: '/create-company'
+      preLoaderRoute: typeof AuthCreateCompanyRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/email-verified': {
@@ -214,37 +270,66 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmissionsNewRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/company': {
+      id: '/_app/settings/company'
+      path: '/settings/company'
+      fullPath: '/settings/company'
+      preLoaderRoute: typeof AppSettingsCompanyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/members': {
+      id: '/_app/settings/members'
+      path: '/settings/members'
+      fullPath: '/settings/members'
+      preLoaderRoute: typeof AppSettingsMembersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_auth/invitations/$invitationId': {
+      id: '/_auth/invitations/$invitationId'
+      path: '/invitations/$invitationId'
+      fullPath: '/invitations/$invitationId'
+      preLoaderRoute: typeof AuthInvitationsInvitationIdRouteImport
+      parentRoute: typeof AuthRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppEmissionsNewRoute: typeof AppEmissionsNewRoute
+  AppSettingsCompanyRoute: typeof AppSettingsCompanyRoute
+  AppSettingsMembersRoute: typeof AppSettingsMembersRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppEmissionsNewRoute: AppEmissionsNewRoute,
+  AppSettingsCompanyRoute: AppSettingsCompanyRoute,
+  AppSettingsMembersRoute: AppSettingsMembersRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface AuthRouteChildren {
   AuthCheckEmailRoute: typeof AuthCheckEmailRoute
+  AuthCreateCompanyRoute: typeof AuthCreateCompanyRoute
   AuthEmailVerifiedRoute: typeof AuthEmailVerifiedRoute
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignUpRoute: typeof AuthSignUpRoute
+  AuthInvitationsInvitationIdRoute: typeof AuthInvitationsInvitationIdRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthCheckEmailRoute: AuthCheckEmailRoute,
+  AuthCreateCompanyRoute: AuthCreateCompanyRoute,
   AuthEmailVerifiedRoute: AuthEmailVerifiedRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignInRoute: AuthSignInRoute,
   AuthSignUpRoute: AuthSignUpRoute,
+  AuthInvitationsInvitationIdRoute: AuthInvitationsInvitationIdRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)

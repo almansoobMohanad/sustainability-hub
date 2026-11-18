@@ -1,4 +1,7 @@
 import { createAuthClient } from 'better-auth/react'
+import { organizationClient } from 'better-auth/client/plugins'
+import { createAccessControl } from 'better-auth/plugins/access'
+import { rolePermissions, statements } from '@hub/shared/permissions'
 
 /*
   Calls the API's /api/auth/* endpoints (Better Auth). No address is given, so
@@ -15,6 +18,23 @@ import { createAuthClient } from 'better-auth/react'
   automatic jump is turned off. Google sign-in (next) must therefore redirect
   explicitly: window.location.href = data.url.
 */
-export const authClient = createAuthClient({ disableDefaultFetchPlugins: true })
+// Same roles as the API (packages/shared/src/permissions.ts), so calls like
+// inviteMember({ role: 'manager' }) are type-checked against real role names.
+const accessControl = createAccessControl(statements)
+
+export const authClient = createAuthClient({
+  disableDefaultFetchPlugins: true,
+  plugins: [
+    // Companies, memberships, invitations (Better Auth's organization plugin)
+    organizationClient({
+      ac: accessControl,
+      roles: {
+        admin: accessControl.newRole(rolePermissions.admin),
+        manager: accessControl.newRole(rolePermissions.manager),
+        member: accessControl.newRole(rolePermissions.member),
+      },
+    }),
+  ],
+})
 
 export type Session = typeof authClient.$Infer.Session

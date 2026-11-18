@@ -12,6 +12,16 @@ export function safeRedirectPath(target: unknown, fallback = '/') {
   return target
 }
 
+/**
+ * Where the link in a verification email should lead: the "Email verified"
+ * page, carrying on to `redirectTo` afterwards (e.g. an invitation someone
+ * clicked before they had an account).
+ */
+export function verifiedCallbackUrl(redirectTo?: string) {
+  const target = safeRedirectPath(redirectTo, '')
+  return target ? `/email-verified?redirect=${encodeURIComponent(target)}` : '/email-verified'
+}
+
 /** Optional search param helper for route validateSearch functions. */
 export function optionalString(value: unknown) {
   return typeof value === 'string' && value.length > 0 ? value : undefined

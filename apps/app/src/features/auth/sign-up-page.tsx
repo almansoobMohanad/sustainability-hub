@@ -11,6 +11,7 @@ import { NETWORK_ERROR_MESSAGE, PASSWORD_HINT, authErrorMessage, isPasswordError
 import { AuthHeading, FieldError, FormMessage, OrDivider } from './auth-parts'
 import { GoogleButton } from './google-button'
 import { PasswordInput } from './password-input'
+import { verifiedCallbackUrl } from './redirect'
 
 // Same rules as the API (it checks again; this just gives instant feedback)
 const schema = z.object({
@@ -20,7 +21,11 @@ const schema = z.object({
 })
 type Values = z.infer<typeof schema>
 
-export function SignUpPage({ googleEnabled }: { googleEnabled: boolean }) {
+/**
+ * redirectTo: where to continue after the account is ready, e.g. an
+ * invitation (/invitations/<id>). It's carried through the verification email.
+ */
+export function SignUpPage({ googleEnabled, redirectTo }: { googleEnabled: boolean; redirectTo?: string }) {
   const navigate = useNavigate()
   const [formError, setFormError] = useState<string | null>(null)
   const {
@@ -33,7 +38,7 @@ export function SignUpPage({ googleEnabled }: { googleEnabled: boolean }) {
   async function onSubmit(values: Values) {
     setFormError(null)
     try {
-      const { error } = await authClient.signUp.email({ ...values, callbackURL: '/email-verified' })
+      const { error } = await authClient.signUp.email({ ...values, callbackURL: verifiedCallbackUrl(redirectTo) })
       if (error) {
         if (isPasswordError(error)) setError('password', { message: authErrorMessage(error) }, { shouldFocus: true })
         else setFormError(authErrorMessage(error))
@@ -55,7 +60,7 @@ export function SignUpPage({ googleEnabled }: { googleEnabled: boolean }) {
 
       {googleEnabled ? (
         <>
-          <GoogleButton onError={setFormError} />
+          <GoogleButton redirectTo={redirectTo} onError={setFormError} />
           <OrDivider />
         </>
       ) : null}
@@ -109,7 +114,11 @@ export function SignUpPage({ googleEnabled }: { googleEnabled: boolean }) {
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{' '}
-        <Link to="/sign-in" className="font-medium text-foreground underline underline-offset-4">
+        <Link
+          to="/sign-in"
+          search={{ redirect: redirectTo }}
+          className="font-medium text-foreground underline underline-offset-4"
+        >
           Sign in
         </Link>
       </p>

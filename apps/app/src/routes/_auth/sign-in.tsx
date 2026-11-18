@@ -16,7 +16,7 @@ export const Route = createFileRoute('/_auth/sign-in')({
     notice: search.notice === 'password-reset' || search.notice === 'signed-out' ? search.notice : undefined,
     error: optionalString(search.error),
   }),
-  beforeLoad: ({ context }) => redirectIfSignedIn(context.queryClient),
+  beforeLoad: ({ context, search }) => redirectIfSignedIn(context.queryClient, search.redirect),
   loader: ({ context }) => context.queryClient.ensureQueryData(authOptionsQueryOptions),
   head: () => ({ meta: [{ title: 'Sign in · Sustainability Hub' }] }),
   component: SignInRoute,

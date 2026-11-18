@@ -1,17 +1,19 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { CircleCheck, TriangleAlert } from 'lucide-react'
 import { Button } from '@hub/ui/components/button'
 import { AuthHeading } from './auth-parts'
+import { safeRedirectPath } from './redirect'
 import { forgetSession } from './session'
 
 /*
   Where the verification link lands. The API has already checked the link:
   if it was valid, the email is verified and the person is signed in; if not,
   we get ?error=TOKEN_EXPIRED or ?error=INVALID_TOKEN.
+  ?redirect=... carries on to where they were heading (e.g. an invitation).
 */
-export function EmailVerifiedPage({ error }: { error?: string }) {
-  const navigate = useNavigate()
+export function EmailVerifiedPage({ error, redirectTo }: { error?: string; redirectTo?: string }) {
+  const router = useRouter()
   const queryClient = useQueryClient()
 
   if (error) {
@@ -26,7 +28,9 @@ export function EmailVerifiedPage({ error }: { error?: string }) {
           description="Sign in with your email and password, and we'll send you a new verification link."
         />
         <Button asChild className="h-10 w-full rounded-full">
-          <Link to="/sign-in">Go to sign in</Link>
+          <Link to="/sign-in" search={{ redirect: redirectTo }}>
+            Go to sign in
+          </Link>
         </Button>
       </>
     )
@@ -35,7 +39,7 @@ export function EmailVerifiedPage({ error }: { error?: string }) {
   async function continueToApp() {
     // The verification signed us in: drop any cached "signed out" answer first
     forgetSession(queryClient)
-    await navigate({ to: '/' })
+    router.history.push(safeRedirectPath(redirectTo))
   }
 
   return (
@@ -45,7 +49,7 @@ export function EmailVerifiedPage({ error }: { error?: string }) {
       </span>
       <AuthHeading title="Email verified" description="Thanks for confirming your email. Your account is ready." />
       <Button className="h-10 w-full rounded-full" onClick={continueToApp}>
-        Continue to the dashboard
+        Continue
       </Button>
     </>
   )
