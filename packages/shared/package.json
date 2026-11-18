@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    "./permissions": "./src/permissions.ts"
+    "./permissions": "./src/permissions.ts",
+    "./sectors": "./src/sectors.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
