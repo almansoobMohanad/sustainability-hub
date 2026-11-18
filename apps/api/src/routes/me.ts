@@ -4,6 +4,7 @@ import { members, organizations } from '@hub/db/schema'
 import { ROLES } from '@hub/shared/permissions'
 import type { Auth } from '../auth/auth'
 import { requireSession, type AuthVariables } from '../auth/require-session'
+import { errorResponse } from './common'
 
 /*
   GET /api/v1/me
@@ -35,8 +36,6 @@ const MeSchema = z
   })
   .openapi('Me')
 
-const ErrorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) }).openapi('Error')
-
 const route = createRoute({
   method: 'get',
   path: '/v1/me',
@@ -44,7 +43,7 @@ const route = createRoute({
   summary: 'The signed-in person and their companies',
   responses: {
     200: { description: 'Signed in', content: { 'application/json': { schema: MeSchema } } },
-    401: { description: 'Not signed in', content: { 'application/json': { schema: ErrorSchema } } },
+    401: errorResponse('Not signed in'),
   },
 })
 
