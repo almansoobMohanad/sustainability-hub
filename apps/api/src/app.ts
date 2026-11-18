@@ -9,6 +9,7 @@ import type { Auth } from './auth/auth'
 import { clientIp } from './auth/client-ip'
 import { authOptionsRoutes } from './routes/auth-options'
 import { companyRoutes } from './routes/company'
+import { emissionRoutes } from './routes/emissions'
 import { factorLibraryRoutes } from './routes/factor-library'
 import { healthRoutes } from './routes/health'
 import { meRoutes } from './routes/me'
@@ -60,6 +61,7 @@ export function createApp({ db, auth, trustedProxyHops, googleSignIn }: AppDeps)
   app.route('/', meRoutes({ db, auth }))
   app.route('/', factorLibraryRoutes({ db, auth }))
   app.route('/', companyRoutes({ db, auth }))
+  app.route('/', emissionRoutes({ db, auth }))
 
   // Authentication: everything under /api/auth is handled by Better Auth.
   // Auth requests are small; refuse big bodies before they're read.

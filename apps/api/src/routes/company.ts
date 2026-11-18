@@ -22,13 +22,19 @@ const MAX_COMPANY_SOURCES = 300
   Always the session's active company (requireCompany), never an id from the request.
 
     GET    /api/v1/company/settings                 everyone in the company
-    PATCH  /api/v1/company/settings                 Admin (sector)
+    PATCH  /api/v1/company/settings                 Admin (sector, verification)
     GET    /api/v1/company/sources?year=2026        everyone: the sources + factors for that year (max 300)
     POST   /api/v1/company/sources                  Admin, Manager: add sources
     DELETE /api/v1/company/sources/{sourceId}       Admin, Manager: stop tracking one
 */
 
-const SettingsSchema = z.object({ sector: z.enum(SECTORS).nullable() }).openapi('CompanySettings')
+const SettingsSchema = z
+  .object({
+    sector: z.enum(SECTORS).nullable(),
+    /** New entries start Pending and need a Manager/Admin to verify them (false: verified automatically) */
+    requireVerification: z.boolean(),
+  })
+  .openapi('CompanySettings')
 
 const CompanySourceSchema = SourceWithFactorsSchema.extend({
   /** Unit offered first when entering data */
@@ -53,7 +59,15 @@ const patchSettingsRoute = createRoute({
   tags: ['Company'],
   summary: "Change the active company's settings (Admin)",
   request: {
-    body: { content: { 'application/json': { schema: z.object({ sector: z.enum(SECTORS).nullable() }) } } },
+    body: {
+      content: {
+        'application/json': {
+          schema: z
+            .object({ sector: z.enum(SECTORS).nullable().optional(), requireVerification: z.boolean().optional() })
+            .refine((changes) => Object.keys(changes).length > 0, 'Nothing to change'),
+        },
+      },
+    },
   },
   responses: {
     200: { description: 'Saved', content: { 'application/json': { schema: SettingsSchema } } },
@@ -143,21 +157,21 @@ export function companyRoutes({ db, auth }: { db: Database; auth: Auth }) {
 
   async function readSettings(companyId: string) {
     const [row] = await db
-      .select({ sector: companySettings.sector })
+      .select({ sector: companySettings.sector, requireVerification: companySettings.requireVerification })
       .from(companySettings)
       .where(eq(companySettings.organizationId, companyId))
-    return { sector: isSector(row?.sector) ? row.sector : null }
+    return { sector: isSector(row?.sector) ? row.sector : null, requireVerification: row?.requireVerification ?? true }
   }
 
   app.openapi(getSettingsRoute, async (c) => c.json(await readSettings(c.var.company.id), 200))
 
   app.openapi(patchSettingsRoute, async (c) => {
     if (!can(c.var.company.role, 'organization', 'update')) return c.json(forbidden, 403)
-    const { sector } = c.req.valid('json')
+    const changes = c.req.valid('json')
     await db
       .insert(companySettings)
-      .values({ organizationId: c.var.company.id, sector })
-      .onConflictDoUpdate({ target: companySettings.organizationId, set: { sector } })
+      .values({ organizationId: c.var.company.id, ...changes })
+      .onConflictDoUpdate({ target: companySettings.organizationId, set: changes })
     return c.json(await readSettings(c.var.company.id), 200)
   })
 
