@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { z } from 'zod'
 import { Badge } from '@hub/ui/components/badge'
@@ -9,8 +9,13 @@ import { Button } from '@hub/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@hub/ui/components/card'
 import { Input } from '@hub/ui/components/input'
 import { Label } from '@hub/ui/components/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@hub/ui/components/select'
+import { Skeleton } from '@hub/ui/components/skeleton'
 import { ROLE_DESCRIPTIONS, ROLE_LABELS, can } from '@hub/shared/permissions'
+import { SECTORS, SECTOR_INFO, type Sector } from '@hub/shared/sectors'
 import { PageHeader } from '@/components/page-header'
+import { companySettingsQueryOptions, useUpdateCompanySettings } from '@/features/factors/queries'
+import { errorMessage } from '@/lib/api'
 import { authClient } from '@/lib/auth-client'
 import { NETWORK_ERROR_MESSAGE } from '@/features/auth/auth-errors'
 import { companyErrorMessage } from './company-errors'
@@ -22,7 +27,7 @@ const schema = z.object({
 type Values = z.infer<typeof schema>
 
 /*
-  Company settings. Today: the company name (Admins) and your role. Later:
+  Company settings. Today: the company name and sector (Admins) and your role. Later:
   e.g. whether new emissions entries need a Manager's verification.
 */
 export function CompanySettingsPage() {
@@ -100,6 +105,8 @@ export function CompanySettingsPage() {
           </CardContent>
         </Card>
 
+        <SectorCard companyId={company.id} canEdit={canEdit} />
+
         <Card>
           <CardHeader>
             <CardTitle>Your role</CardTitle>
@@ -115,5 +122,83 @@ export function CompanySettingsPage() {
         </Card>
       </div>
     </>
+  )
+}
+
+/*
+  The company's sector. It chose the starting template of emission sources;
+  changing it later doesn't change the sources (that would silently remove
+  things people track), but the Add sources dialog then suggests the new
+  sector's sources.
+*/
+function SectorCard({ companyId, canEdit }: { companyId: string; canEdit: boolean }) {
+  const settings = useQuery(companySettingsQueryOptions(companyId))
+  const update = useUpdateCompanySettings(companyId)
+  const [choice, setChoice] = useState<Sector | null>(null)
+  const [feedback, setFeedback] = useState<{ tone: 'error' | 'success'; text: string } | null>(null)
+  const saved = settings.data?.sector ?? null
+  const selected = choice ?? saved
+
+  async function save() {
+    if (!selected) return
+    setFeedback(null)
+    try {
+      await update.mutateAsync({ sector: selected })
+      setChoice(null)
+      setFeedback({ tone: 'success', text: 'Sector saved.' })
+    } catch (error) {
+      setFeedback({ tone: 'error', text: errorMessage(error) })
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Sector</CardTitle>
+        <CardDescription>
+          Used to suggest emission sources. Changing it doesn&apos;t change the sources you track; the{' '}
+          <Link to="/settings/sources" className="underline underline-offset-4">
+            Emission sources
+          </Link>{' '}
+          page then suggests the new sector&apos;s sources.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {settings.isPending ? (
+          <Skeleton className="h-9 w-full max-w-sm" />
+        ) : canEdit ? (
+          <div className="space-y-2">
+            <Label htmlFor="company-sector">Sector</Label>
+            <Select value={selected ?? ''} onValueChange={(value) => setChoice(value as Sector)}>
+              <SelectTrigger id="company-sector" className="w-full max-w-sm">
+                <SelectValue placeholder="Choose a sector" />
+              </SelectTrigger>
+              <SelectContent>
+                {SECTORS.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {SECTOR_INFO[option].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <p className="text-sm">{saved ? SECTOR_INFO[saved].label : 'Not chosen yet'}</p>
+        )}
+        {feedback ? (
+          <p
+            role={feedback.tone === 'error' ? 'alert' : 'status'}
+            className={feedback.tone === 'error' ? 'text-sm text-destructive' : 'text-sm text-emerald-700 dark:text-emerald-400'}
+          >
+            {feedback.text}
+          </p>
+        ) : null}
+        {canEdit ? (
+          <Button className="rounded-full" onClick={save} disabled={update.isPending || !choice || choice === saved}>
+            {update.isPending ? 'Saving...' : 'Save sector'}
+          </Button>
+        ) : null}
+      </CardContent>
+    </Card>
   )
 }

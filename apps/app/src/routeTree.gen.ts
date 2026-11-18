@@ -22,6 +22,7 @@ import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AppEmissionsNewRouteImport } from './routes/_app/emissions/new'
 import { Route as AppSettingsCompanyRouteImport } from './routes/_app/settings/company'
 import { Route as AppSettingsMembersRouteImport } from './routes/_app/settings/members'
+import { Route as AppSettingsSourcesRouteImport } from './routes/_app/settings/sources'
 import { Route as AuthInvitationsInvitationIdRouteImport } from './routes/_auth/invitations/$invitationId'
 
 const AppRoute = AppRouteImport.update({
@@ -87,6 +88,11 @@ const AppSettingsMembersRoute = AppSettingsMembersRouteImport.update({
   path: '/settings/members',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsSourcesRoute = AppSettingsSourcesRouteImport.update({
+  id: '/settings/sources',
+  path: '/settings/sources',
+  getParentRoute: () => AppRoute,
+} as any)
 const AuthInvitationsInvitationIdRoute =
   AuthInvitationsInvitationIdRouteImport.update({
     id: '/invitations/$invitationId',
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/emissions/new': typeof AppEmissionsNewRoute
   '/settings/company': typeof AppSettingsCompanyRoute
   '/settings/members': typeof AppSettingsMembersRoute
+  '/settings/sources': typeof AppSettingsSourcesRoute
   '/invitations/$invitationId': typeof AuthInvitationsInvitationIdRoute
 }
 export interface FileRoutesByTo {
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/emissions/new': typeof AppEmissionsNewRoute
   '/settings/company': typeof AppSettingsCompanyRoute
   '/settings/members': typeof AppSettingsMembersRoute
+  '/settings/sources': typeof AppSettingsSourcesRoute
   '/invitations/$invitationId': typeof AuthInvitationsInvitationIdRoute
 }
 export interface FileRoutesById {
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   '/_app/emissions/new': typeof AppEmissionsNewRoute
   '/_app/settings/company': typeof AppSettingsCompanyRoute
   '/_app/settings/members': typeof AppSettingsMembersRoute
+  '/_app/settings/sources': typeof AppSettingsSourcesRoute
   '/_auth/invitations/$invitationId': typeof AuthInvitationsInvitationIdRoute
 }
 export interface FileRouteTypes {
@@ -153,6 +162,7 @@ export interface FileRouteTypes {
     | '/emissions/new'
     | '/settings/company'
     | '/settings/members'
+    | '/settings/sources'
     | '/invitations/$invitationId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/emissions/new'
     | '/settings/company'
     | '/settings/members'
+    | '/settings/sources'
     | '/invitations/$invitationId'
   id:
     | '__root__'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/_app/emissions/new'
     | '/_app/settings/company'
     | '/_app/settings/members'
+    | '/_app/settings/sources'
     | '/_auth/invitations/$invitationId'
   fileRoutesById: FileRoutesById
 }
@@ -284,6 +296,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsMembersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/sources': {
+      id: '/_app/settings/sources'
+      path: '/settings/sources'
+      fullPath: '/settings/sources'
+      preLoaderRoute: typeof AppSettingsSourcesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_auth/invitations/$invitationId': {
       id: '/_auth/invitations/$invitationId'
       path: '/invitations/$invitationId'
@@ -299,6 +318,7 @@ interface AppRouteChildren {
   AppEmissionsNewRoute: typeof AppEmissionsNewRoute
   AppSettingsCompanyRoute: typeof AppSettingsCompanyRoute
   AppSettingsMembersRoute: typeof AppSettingsMembersRoute
+  AppSettingsSourcesRoute: typeof AppSettingsSourcesRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -306,6 +326,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEmissionsNewRoute: AppEmissionsNewRoute,
   AppSettingsCompanyRoute: AppSettingsCompanyRoute,
   AppSettingsMembersRoute: AppSettingsMembersRoute,
+  AppSettingsSourcesRoute: AppSettingsSourcesRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
