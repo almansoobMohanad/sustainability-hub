@@ -135,7 +135,7 @@ export function MembersPage() {
 
   return (
     <>
-      <PageHeader title="Members" demoData={false} />
+      <PageHeader title="Members" />
       <div className="grid w-full max-w-5xl gap-6 p-4 md:p-6">
         <div>
           <h2 className="font-heading text-xl font-semibold tracking-tight">People in {company.name}</h2>

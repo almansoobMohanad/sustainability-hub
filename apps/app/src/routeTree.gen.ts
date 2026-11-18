@@ -19,6 +19,7 @@ import { Route as AuthForgotPasswordRouteImport } from './routes/_auth/forgot-pa
 import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
+import { Route as AppEmissionsIndexRouteImport } from './routes/_app/emissions/index'
 import { Route as AppEmissionsNewRouteImport } from './routes/_app/emissions/new'
 import { Route as AppSettingsCompanyRouteImport } from './routes/_app/settings/company'
 import { Route as AppSettingsMembersRouteImport } from './routes/_app/settings/members'
@@ -73,6 +74,11 @@ const AuthSignUpRoute = AuthSignUpRouteImport.update({
   path: '/sign-up',
   getParentRoute: () => AuthRoute,
 } as any)
+const AppEmissionsIndexRoute = AppEmissionsIndexRouteImport.update({
+  id: '/emissions/',
+  path: '/emissions/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppEmissionsNewRoute = AppEmissionsNewRouteImport.update({
   id: '/emissions/new',
   path: '/emissions/new',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/settings/members': typeof AppSettingsMembersRoute
   '/settings/sources': typeof AppSettingsSourcesRoute
   '/invitations/$invitationId': typeof AuthInvitationsInvitationIdRoute
+  '/emissions/': typeof AppEmissionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/settings/members': typeof AppSettingsMembersRoute
   '/settings/sources': typeof AppSettingsSourcesRoute
   '/invitations/$invitationId': typeof AuthInvitationsInvitationIdRoute
+  '/emissions': typeof AppEmissionsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/_app/settings/members': typeof AppSettingsMembersRoute
   '/_app/settings/sources': typeof AppSettingsSourcesRoute
   '/_auth/invitations/$invitationId': typeof AuthInvitationsInvitationIdRoute
+  '/_app/emissions/': typeof AppEmissionsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/settings/members'
     | '/settings/sources'
     | '/invitations/$invitationId'
+    | '/emissions/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/settings/members'
     | '/settings/sources'
     | '/invitations/$invitationId'
+    | '/emissions'
   id:
     | '__root__'
     | '/_app'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/_app/settings/members'
     | '/_app/settings/sources'
     | '/_auth/invitations/$invitationId'
+    | '/_app/emissions/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -275,6 +287,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignUpRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_app/emissions/': {
+      id: '/_app/emissions/'
+      path: '/emissions'
+      fullPath: '/emissions/'
+      preLoaderRoute: typeof AppEmissionsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/emissions/new': {
       id: '/_app/emissions/new'
       path: '/emissions/new'
@@ -319,6 +338,7 @@ interface AppRouteChildren {
   AppSettingsCompanyRoute: typeof AppSettingsCompanyRoute
   AppSettingsMembersRoute: typeof AppSettingsMembersRoute
   AppSettingsSourcesRoute: typeof AppSettingsSourcesRoute
+  AppEmissionsIndexRoute: typeof AppEmissionsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -327,6 +347,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsCompanyRoute: AppSettingsCompanyRoute,
   AppSettingsMembersRoute: AppSettingsMembersRoute,
   AppSettingsSourcesRoute: AppSettingsSourcesRoute,
+  AppEmissionsIndexRoute: AppEmissionsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

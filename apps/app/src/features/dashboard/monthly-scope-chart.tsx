@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SCOPES, SCOPE_INFO, type Scope } from '@/features/emissions/types'
 import { useElementWidth } from '@/hooks/use-element-width'
 import { formatTonnes, monthName } from '@/lib/format'
-import type { MonthSummary } from './summarize'
+import type { MonthSummary } from '@/features/emissions/types'
 
 /*
   Monthly emissions as stacked columns (Scope 1 at the bottom, then 2, then 3).

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ArrowDownRight, ArrowUpRight, ChartColumn, CirclePlus, Clock, Table2 } from 'lucide-react'
 import { Button } from '@hub/ui/components/button'
@@ -20,24 +20,34 @@ import {
   TableHeader,
   TableRow,
 } from '@hub/ui/components/table'
-import { cn } from '@hub/ui/lib/utils'
+import { Skeleton } from '@hub/ui/components/skeleton'
+import { can } from '@hub/shared/permissions'
 import { PageHeader } from '@/components/page-header'
-import { entriesQuery, sourcesQuery } from '@/features/emissions/queries'
+import { useMe } from '@/features/company/me'
+import { entriesQueryOptions, summaryQueryOptions } from '@/features/emissions/queries'
 import { StatusBadge } from '@/features/emissions/status-badge'
-import { SCOPES, SCOPE_INFO, type Scope } from '@/features/emissions/types'
+import { SCOPES, SCOPE_INFO, type Scope, type YearSummary } from '@/features/emissions/types'
+import { unitLabel } from '@/features/factors/format'
+import { errorMessage } from '@/lib/api'
 import { formatNumber, formatPeriod, formatTonnes, monthName } from '@/lib/format'
 import { MonthlyScopeChart } from './monthly-scope-chart'
-import { availableYears, summarizeYear, type YearSummary } from './summarize'
 
 const scopeColor = (scope: Scope) => `var(--scope-${scope})`
 
+/*
+  The dashboard for one year (this year by default). Every number comes from
+  GET /api/v1/emissions/summary, which Postgres calculates; the browser never
+  downloads the entries to add them up.
+*/
 export function DashboardPage() {
-  const { data: entries } = useSuspenseQuery(entriesQuery)
-  const { data: sources } = useSuspenseQuery(sourcesQuery)
-
-  const years = useMemo(() => availableYears(entries), [entries])
-  const [year, setYear] = useState(() => years[0] ?? new Date().getFullYear())
-  const summary = useMemo(() => summarizeYear(entries, sources, year), [entries, sources, year])
+  const me = useMe()
+  const company = me.company!
+  const thisYear = new Date().getFullYear()
+  const [year, setYear] = useState(thisYear)
+  const summaryQuery = useQuery(summaryQueryOptions(company.id, year))
+  const summary = summaryQuery.data
+  // This year is always offered, plus every year that has entries
+  const years = [...new Set([thisYear, year, ...(summary?.years ?? [])])].sort((a, b) => b - a)
 
   return (
     <>
@@ -64,7 +74,7 @@ export function DashboardPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {(years.length ? years : [year]).map((y) => (
+              {years.map((y) => (
                 <SelectItem key={y} value={String(y)}>
                   {y}
                 </SelectItem>
@@ -73,15 +83,29 @@ export function DashboardPage() {
           </Select>
         </div>
 
-        {summary.lastMonthWithData < 0 ? (
+        {summaryQuery.isPending ? (
+          <div className="flex flex-col gap-6" aria-label="Loading the dashboard">
+            <Skeleton className="h-44 w-full rounded-xl" />
+            <Skeleton className="h-80 w-full rounded-xl" />
+          </div>
+        ) : summaryQuery.isError || !summary ? (
+          <p role="alert" className="text-sm text-destructive">
+            {errorMessage(summaryQuery.error)}
+          </p>
+        ) : summary.lastMonthWithData < 0 ? (
           <EmptyState year={year} />
         ) : (
           <>
             <TotalsCard summary={summary} />
             <MonthlyCard summary={summary} />
             <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-              <RecentEntriesCard />
-              <VerificationCard count={summary.awaitingVerification} year={year} />
+              <RecentEntriesCard companyId={company.id} year={year} />
+              <VerificationCard
+                count={summary.pendingEntries}
+                pendingKg={summary.pendingKg}
+                year={year}
+                canVerify={can(me.role, 'emissions', 'verify')}
+              />
             </div>
           </>
         )}
@@ -98,8 +122,9 @@ function periodLabel(lastMonth: number, year: number) {
 }
 
 function TotalsCard({ summary }: { summary: YearSummary }) {
-  const { total, byScope, year, lastMonthWithData, previousYearSamePeriod: prev } = summary
-  const change = prev.hasData && prev.total > 0 ? (total - prev.total) / prev.total : null
+  const { totalKg: total, byScope, year, lastMonthWithData, previousYearSamePeriod: prev } = summary
+  // Like for like: only when last year has data for each of the same months
+  const change = prev.complete && prev.totalKg > 0 ? (total - prev.totalKg) / prev.totalKg : null
   const decreased = change !== null && change < 0
 
   return (
@@ -264,68 +289,82 @@ function MonthlyCard({ summary }: { summary: YearSummary }) {
   )
 }
 
-function RecentEntriesCard() {
-  const { data: entries } = useSuspenseQuery(entriesQuery)
-  const { data: sources } = useSuspenseQuery(sourcesQuery)
-  const sourceById = new Map(sources.map((s) => [s.id, s]))
-  const recent = [...entries]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 6)
+function RecentEntriesCard({ companyId, year }: { companyId: string; year: number }) {
+  // The first 6 entries of the year (newest reporting month first): one small request
+  const recent = useInfiniteQuery(entriesQueryOptions(companyId, { year, status: null, scope: null }, 6))
+  const entries = recent.data?.pages[0]?.items ?? []
 
   return (
     <Card className="min-w-0">
-      <CardHeader>
-        <CardTitle>Recent entries</CardTitle>
-        <CardDescription>The latest activity data added</CardDescription>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
+        <div>
+          <CardTitle>Latest entries</CardTitle>
+          <CardDescription>The most recent reporting months of {year}</CardDescription>
+        </div>
+        <Button asChild size="sm" variant="outline" className="rounded-full">
+          <Link to="/emissions" search={{ year }}>
+            View all
+          </Link>
+        </Button>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Period</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead className="text-right">Activity</TableHead>
-              <TableHead className="text-right">t CO2e</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {recent.map((entry) => {
-              const source = sourceById.get(entry.sourceId)
-              return (
+        {recent.isPending ? (
+          <Skeleton className="h-40 w-full" />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Month</TableHead>
+                <TableHead>Source</TableHead>
+                {/* Only on very wide screens: the card is narrow next to the verification card */}
+                <TableHead className="hidden text-right 2xl:table-cell">Activity</TableHead>
+                <TableHead className="text-right">t CO2e</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry) => (
                 <TableRow key={entry.id}>
                   <TableCell className="whitespace-nowrap">{formatPeriod(entry.period)}</TableCell>
                   <TableCell className="max-w-56">
-                    <span className="block truncate">{source?.name ?? 'Unknown source'}</span>
+                    <span className="block truncate">{entry.source.name}</span>
                     <span className="block truncate text-xs text-muted-foreground">
-                      {source ? `${SCOPE_INFO[source.scope].label} · ${source.category}` : ''}
+                      {SCOPE_INFO[entry.scope].label} · {entry.source.category}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right whitespace-nowrap tabular-nums">
-                    {formatNumber(entry.amount)} {source?.unit}
+                  <TableCell className="hidden text-right whitespace-nowrap tabular-nums 2xl:table-cell">
+                    {formatNumber(entry.amount)} {unitLabel(entry.unit)}
                   </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">
-                    {formatTonnes(entry.co2eKg, 2)}
-                  </TableCell>
+                  <TableCell className="text-right font-medium tabular-nums">{formatTonnes(entry.co2eKg, 2)}</TableCell>
                   <TableCell>
                     <StatusBadge status={entry.status} />
                   </TableCell>
                 </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   )
 }
 
-function VerificationCard({ count, year }: { count: number; year: number }) {
+function VerificationCard({
+  count,
+  pendingKg,
+  year,
+  canVerify,
+}: {
+  count: number
+  pendingKg: number
+  year: number
+  canVerify: boolean
+}) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Awaiting verification</CardTitle>
-        <CardDescription>Entries in {year} a manager still needs to review</CardDescription>
+        <CardDescription>Pending entries of {year}; they count in the totals above</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <p className="flex items-center gap-2">
@@ -333,9 +372,18 @@ function VerificationCard({ count, year }: { count: number; year: number }) {
           <span className="text-3xl font-semibold tracking-tight">{count}</span>
           <span className="text-muted-foreground">{count === 1 ? 'entry' : 'entries'}</span>
         </p>
-        <p className="text-sm text-muted-foreground">
-          The verification workflow (approve, reject, audit trail) comes in a later step.
-        </p>
+        {count > 0 ? (
+          <>
+            <p className="text-sm text-muted-foreground">{formatTonnes(pendingKg)} t CO2e not verified yet.</p>
+            <Button asChild size="sm" variant={canVerify ? 'default' : 'outline'} className="self-start rounded-full">
+              <Link to="/emissions" search={{ year, status: 'pending' }}>
+                {canVerify ? 'Review pending entries' : 'See pending entries'}
+              </Link>
+            </Button>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">Everything recorded for {year} is reviewed.</p>
+        )}
       </CardContent>
     </Card>
   )
@@ -346,7 +394,7 @@ function EmptyState({ year }: { year: number }) {
     <Card>
       <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
         <p className="text-lg font-medium">No emissions recorded for {year}</p>
-        <p className={cn('max-w-sm text-sm text-muted-foreground')}>
+        <p className="max-w-sm text-sm text-muted-foreground">
           Add your first activity data, such as fuel, electricity or business travel, to see your
           footprint here.
         </p>

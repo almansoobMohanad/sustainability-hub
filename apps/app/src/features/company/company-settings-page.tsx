@@ -61,7 +61,7 @@ export function CompanySettingsPage() {
 
   return (
     <>
-      <PageHeader title="Company settings" demoData={false} />
+      <PageHeader title="Company settings" />
       <div className="grid w-full max-w-3xl gap-6 p-4 md:p-6">
         <Card>
           <CardHeader>
@@ -107,6 +107,8 @@ export function CompanySettingsPage() {
 
         <SectorCard companyId={company.id} canEdit={canEdit} />
 
+        <VerificationSettingCard companyId={company.id} canEdit={canEdit} />
+
         <Card>
           <CardHeader>
             <CardTitle>Your role</CardTitle>
@@ -131,6 +133,93 @@ export function CompanySettingsPage() {
   things people track), but the Add sources dialog then suggests the new
   sector's sources.
 */
+const VERIFICATION_OPTIONS = [
+  {
+    value: true,
+    label: 'Managers verify entries',
+    description:
+      'New entries start as Pending. A Manager or Admin checks each one and verifies or rejects it. Recommended for reported figures.',
+  },
+  {
+    value: false,
+    label: 'Verify automatically',
+    description: 'New entries are verified as soon as they are added. Suits small teams where one person enters all data.',
+  },
+] as const
+
+/*
+  Whether new entries need a Manager's or Admin's verification (the default)
+  or are verified automatically. Changing it affects new entries only.
+*/
+function VerificationSettingCard({ companyId, canEdit }: { companyId: string; canEdit: boolean }) {
+  const settings = useQuery(companySettingsQueryOptions(companyId))
+  const update = useUpdateCompanySettings(companyId)
+  const [choice, setChoice] = useState<boolean | null>(null)
+  const [feedback, setFeedback] = useState<{ tone: 'error' | 'success'; text: string } | null>(null)
+  const saved = settings.data?.requireVerification ?? true
+  const selected = choice ?? saved
+
+  async function save() {
+    setFeedback(null)
+    try {
+      await update.mutateAsync({ requireVerification: selected })
+      setChoice(null)
+      setFeedback({ tone: 'success', text: 'Verification setting saved. It applies to new entries.' })
+    } catch (error) {
+      setFeedback({ tone: 'error', text: errorMessage(error) })
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Verification</CardTitle>
+        <CardDescription>
+          {canEdit ? 'How new emissions entries are reviewed.' : 'How new emissions entries are reviewed. Only Admins can change this.'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {settings.isPending ? (
+          <Skeleton className="h-24 w-full" />
+        ) : (
+          <fieldset className="grid gap-3 sm:grid-cols-2" disabled={!canEdit}>
+            <legend className="sr-only">Verification of new entries</legend>
+            {VERIFICATION_OPTIONS.map((option) => (
+              <label
+                key={String(option.value)}
+                className="flex cursor-pointer flex-col gap-1 rounded-xl border p-3 transition-colors hover:bg-muted/50 has-checked:border-emerald-600 has-checked:bg-emerald-50/50 has-disabled:cursor-default has-disabled:hover:bg-transparent has-focus-visible:ring-3 has-focus-visible:ring-ring/50 dark:has-checked:bg-emerald-950/30"
+              >
+                <input
+                  type="radio"
+                  name="require-verification"
+                  className="sr-only"
+                  checked={selected === option.value}
+                  onChange={() => setChoice(option.value)}
+                />
+                <span className="text-sm font-medium">{option.label}</span>
+                <span className="text-xs text-muted-foreground">{option.description}</span>
+              </label>
+            ))}
+          </fieldset>
+        )}
+        {feedback ? (
+          <p
+            role={feedback.tone === 'error' ? 'alert' : 'status'}
+            className={feedback.tone === 'error' ? 'text-sm text-destructive' : 'text-sm text-emerald-700 dark:text-emerald-400'}
+          >
+            {feedback.text}
+          </p>
+        ) : null}
+        {canEdit ? (
+          <Button className="rounded-full" onClick={save} disabled={update.isPending || choice === null || choice === saved}>
+            {update.isPending ? 'Saving...' : 'Save verification setting'}
+          </Button>
+        ) : null}
+      </CardContent>
+    </Card>
+  )
+}
+
 function SectorCard({ companyId, canEdit }: { companyId: string; canEdit: boolean }) {
   const settings = useQuery(companySettingsQueryOptions(companyId))
   const update = useUpdateCompanySettings(companyId)

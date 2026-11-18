@@ -1,5 +1,5 @@
 import type { LinkProps } from '@tanstack/react-router'
-import { Building2, CirclePlus, LayoutDashboard, ListChecks, Users, type LucideIcon } from 'lucide-react'
+import { Building2, CirclePlus, LayoutDashboard, ListChecks, Rows3, Users, type LucideIcon } from 'lucide-react'
 
 /*
   The app's navigation: the pages shown in the sidebar, grouped.
@@ -25,7 +25,10 @@ export const appNav: AppNavGroup[] = [
   },
   {
     label: 'Emissions',
-    items: [{ label: 'Add emissions', to: '/emissions/new', icon: CirclePlus }],
+    items: [
+      { label: 'Add emissions', to: '/emissions/new', icon: CirclePlus },
+      { label: 'Entries', to: '/emissions', icon: Rows3 },
+    ],
   },
   {
     label: 'Company',
