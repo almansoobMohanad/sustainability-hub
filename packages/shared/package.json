@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
+    "./emissions": "./src/emissions.ts",
     "./permissions": "./src/permissions.ts",
     "./sectors": "./src/sectors.ts"
   },
