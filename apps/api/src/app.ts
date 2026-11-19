@@ -36,6 +36,8 @@ type AppDeps = {
   trustedProxyHops: number
   /** Whether "Continue with Google" is configured */
   googleSignIn: boolean
+  /** Print one line per request (default true; the tests turn it off) */
+  logRequests?: boolean
 }
 
 /**
@@ -49,11 +51,11 @@ function redactSecrets(line: string) {
     .replace(/([?&](?:token|code)=)[^\s&]+/g, '$1[redacted]')
 }
 
-export function createApp({ db, auth, trustedProxyHops, googleSignIn }: AppDeps) {
+export function createApp({ db, auth, trustedProxyHops, googleSignIn, logRequests = true }: AppDeps) {
   const app = new OpenAPIHono().basePath('/api')
 
   app.use(requestId()) // X-Request-Id header, handy for matching logs to requests
-  app.use(logger((line, ...rest) => console.log(redactSecrets(line), ...rest)))
+  if (logRequests) app.use(logger((line, ...rest) => console.log(redactSecrets(line), ...rest)))
   app.use(secureHeaders()) // safe defaults: nosniff, frame protection, etc.
 
   app.route('/', healthRoutes(db))

@@ -12,4 +12,10 @@ export default defineConfig([
       globals: globals.node,
     },
   },
+  {
+    // Tests read JSON responses loosely (body.items[0].id); typing every
+    // response shape there would add noise, not safety.
+    files: ['test/**/*.ts'],
+    rules: { '@typescript-eslint/no-explicit-any': 'off' },
+  },
 ])
