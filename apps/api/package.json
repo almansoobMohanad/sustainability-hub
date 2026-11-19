@@ -9,6 +9,7 @@
     "start": "node dist/index.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "test": "vitest run",
     "auth:schema": "auth generate --config src/auth/cli-config.ts --output ../../packages/db/src/schema/auth.ts --yes && node scripts/finish-auth-schema.mjs"
   },
   "dependencies": {
@@ -32,6 +33,7 @@
     "tsdown": "^0.23.7",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.72.1"
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.1.1"
   }
 }
