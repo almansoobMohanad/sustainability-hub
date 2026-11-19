@@ -24,6 +24,7 @@ import {
   listEntries,
   requiresVerification,
   sourceScope,
+  statusCounts,
   toEntryJson,
   type EntryRow,
 } from '../emissions/entry-store'
@@ -305,6 +306,32 @@ const summaryRoute = createRoute({
             previousYearSamePeriod: z.object({ totalKg: z.number(), complete: z.boolean() }),
           })
           .openapi('EmissionSummary'),
+      ),
+    },
+    400: errorResponse('Invalid query'),
+    401: errorResponse('Not signed in'),
+    403: errorResponse('No active company'),
+  },
+})
+
+const statusCountsRoute = createRoute({
+  method: 'get',
+  path: '/v1/emissions/status-counts',
+  tags: ['Emissions'],
+  summary: 'How many entries have each status (no year = all years)',
+  request: {
+    query: z.object({
+      year: z.coerce.number().int().min(ENTRY_LIMITS.firstYear).max(2100).optional(),
+      scope: z.coerce.number().int().min(1).max(3).optional(),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'Entries per status',
+      ...json(
+        z
+          .object({ pending: z.number().int(), verified: z.number().int(), rejected: z.number().int() })
+          .openapi('EmissionStatusCounts'),
       ),
     },
     400: errorResponse('Invalid query'),
@@ -653,6 +680,11 @@ export function emissionRoutes({ db, auth }: { db: Database; auth: Auth }) {
       return rows.length
     })
     return c.json({ verified, skipped: ids.length - verified }, 200)
+  })
+
+  app.openapi(statusCountsRoute, async (c) => {
+    const { year, scope } = c.req.valid('query')
+    return c.json(await statusCounts(db, c.var.company.id, { year, scope }), 200)
   })
 
   app.openapi(summaryRoute, async (c) => {

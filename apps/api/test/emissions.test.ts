@@ -303,6 +303,18 @@ describe('lists and the dashboard summary', () => {
     expect((await reporting.admin.get('/v1/emissions/entries?cursor=not-a-cursor')).status).toBe(400)
   })
 
+  test('status counts (tabs and the "waiting for verification" badge) match the lists', async () => {
+    const counts = (query: string) => reviewer.get(`/v1/emissions/status-counts${query}`)
+    expect((await counts('?year=2024')).body).toEqual({ pending: 2, verified: 15, rejected: 1 })
+    expect((await counts('?year=2024&scope=1')).body).toEqual({ pending: 1, verified: 4, rejected: 1 })
+    // No year: every year (2023's three entries are still Pending)
+    expect((await counts('')).body).toEqual({ pending: 5, verified: 15, rejected: 1 })
+    expect((await counts('?year=1900')).status).toBe(400)
+
+    const outsider = (await createCompany(api, { template: false })).admin
+    expect((await outsider.get('/v1/emissions/status-counts')).body).toEqual({ pending: 0, verified: 0, rejected: 0 })
+  })
+
   test('the summary matches a plain SQL sum and leaves rejected entries out', async () => {
     const { body } = await reviewer.get('/v1/emissions/summary?year=2024')
     const { rows } = await api.db.execute<{ status: string; scope: number; kg: string; n: string }>(sql`

@@ -3,7 +3,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { CircleAlert, CircleCheck, UserPlus } from 'lucide-react'
+import { Clock, LogOut, Mail, UserMinus, UserPlus, type LucideIcon } from 'lucide-react'
 import { z } from 'zod'
 import {
   AlertDialog,
@@ -17,25 +17,36 @@ import {
   AlertDialogTrigger,
 } from '@hub/ui/components/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@hub/ui/components/avatar'
-import { Badge } from '@hub/ui/components/badge'
 import { Button } from '@hub/ui/components/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@hub/ui/components/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@hub/ui/components/dialog'
 import { Input } from '@hub/ui/components/input'
 import { Label } from '@hub/ui/components/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@hub/ui/components/select'
 import { Skeleton } from '@hub/ui/components/skeleton'
+import { toast } from '@hub/ui/components/sonner'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@hub/ui/components/table'
 import { ROLES, ROLE_DESCRIPTIONS, ROLE_LABELS, can, isRole, type Role } from '@hub/shared/permissions'
+import { InfoTip } from '@/components/info-tip'
 import { PageHeader } from '@/components/page-header'
+import { PageBody, PageTitle } from '@/components/page-layout'
 import { authClient } from '@/lib/auth-client'
 import { NETWORK_ERROR_MESSAGE } from '@/features/auth/auth-errors'
 import { companyErrorMessage } from './company-errors'
 import { forgetCompanyData, useMe } from './me'
+import { RolePill } from './role-pill'
 
 /*
   Members of the active company: who's in it, their roles, pending invitations.
   What you can do depends on your role (packages/shared/src/permissions.ts);
   the API enforces the same rules, so hiding a button is only a convenience.
+  Outcomes are shown as toasts.
 */
 
 const dateFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -45,34 +56,14 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? (parts.at(-1)?.[0] ?? '') : '')).toUpperCase() || '?'
 }
 
-type Feedback = { tone: 'error' | 'success'; text: string } | null
-
-function FeedbackMessage({ feedback }: { feedback: Feedback }) {
-  if (!feedback) return null
-  const Icon = feedback.tone === 'error' ? CircleAlert : CircleCheck
-  return (
-    <p
-      role={feedback.tone === 'error' ? 'alert' : 'status'}
-      className={
-        feedback.tone === 'error'
-          ? 'flex items-start gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-sm text-destructive'
-          : 'flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200'
-      }
-    >
-      <Icon className="mt-0.5 size-4 shrink-0" aria-hidden />
-      {feedback.text}
-    </p>
-  )
-}
-
 export function MembersPage() {
   const me = useMe()
   const company = me.company!
   const myRole = me.role
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const [feedback, setFeedback] = useState<Feedback>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [inviteOpen, setInviteOpen] = useState(false)
 
   const companyKey = ['company', company.id] as const
   const full = useQuery({
@@ -94,16 +85,15 @@ export function MembersPage() {
   /** Runs a change, shows the outcome, refreshes the lists. */
   async function run(id: string, action: () => Promise<{ error: unknown }>, success: string) {
     setBusyId(id)
-    setFeedback(null)
     try {
       const { error } = await action()
-      if (error) setFeedback({ tone: 'error', text: companyErrorMessage(error as { status: number; code?: string }) })
+      if (error) toast.error(companyErrorMessage(error as { status: number; code?: string }))
       else {
-        setFeedback({ tone: 'success', text: success })
+        toast.success(success)
         await queryClient.invalidateQueries({ queryKey: companyKey })
       }
     } catch {
-      setFeedback({ tone: 'error', text: NETWORK_ERROR_MESSAGE })
+      toast.error(NETWORK_ERROR_MESSAGE)
     } finally {
       setBusyId(null)
     }
@@ -111,18 +101,17 @@ export function MembersPage() {
 
   async function leave() {
     setBusyId('leave')
-    setFeedback(null)
     try {
       const { error } = await authClient.organization.leave({ organizationId: company.id })
       if (error) {
-        setFeedback({ tone: 'error', text: companyErrorMessage(error) })
+        toast.error(companyErrorMessage(error))
         setBusyId(null)
         return
       }
       forgetCompanyData(queryClient)
       await navigate({ to: '/' }) // the guard picks another company, or "create a company"
     } catch {
-      setFeedback({ tone: 'error', text: NETWORK_ERROR_MESSAGE })
+      toast.error(NETWORK_ERROR_MESSAGE)
       setBusyId(null)
     }
   }
@@ -136,215 +125,241 @@ export function MembersPage() {
   return (
     <>
       <PageHeader title="Members" />
-      <div className="grid w-full max-w-5xl gap-6 p-4 md:p-6">
-        <div>
-          <h2 className="font-heading text-xl font-semibold tracking-tight">People in {company.name}</h2>
-          <p className="text-sm text-muted-foreground">
-            You&apos;re {myRole === 'admin' ? 'an' : 'a'} {myRole ? ROLE_LABELS[myRole] : 'member'}.{' '}
-            {myRole ? ROLE_DESCRIPTIONS[myRole] : null}
-          </p>
-        </div>
+      <PageBody className="max-w-5xl">
+        <PageTitle
+          title="Members"
+          info={
+            <>
+              <span>
+                You&apos;re {myRole === 'admin' ? 'an' : 'a'} {myRole ? ROLE_LABELS[myRole] : 'member'} of {company.name}.
+              </span>
+              {ROLES.map((role) => (
+                <span key={role}>
+                  <span className="font-medium">{ROLE_LABELS[role]}:</span> {ROLE_DESCRIPTIONS[role]}
+                </span>
+              ))}
+            </>
+          }
+          actions={
+            canInvite ? (
+              <Button className="h-9 rounded-full px-4" onClick={() => setInviteOpen(true)}>
+                <UserPlus aria-hidden />
+                Invite people
+              </Button>
+            ) : null
+          }
+        />
 
-        <FeedbackMessage feedback={feedback} />
-
-        {canInvite ? (
-          <InviteForm
-            myRole={myRole}
-            onInvited={async (email) => {
-              setFeedback({ tone: 'success', text: `Invitation sent to ${email}.` })
-              await queryClient.invalidateQueries({ queryKey: companyKey })
-            }}
-            onError={(text) => setFeedback({ tone: 'error', text })}
-          />
-        ) : null}
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Members</CardTitle>
-            <CardDescription>
-              {full.isPending ? 'Loading...' : `${members.length} ${members.length === 1 ? 'person' : 'people'}`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {full.isError ? (
-              <p role="alert" className="text-sm text-destructive">
-                {full.error.message}
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Person</TableHead>
-                    <TableHead className="w-40">Role</TableHead>
-                    <TableHead className="hidden w-32 sm:table-cell">Joined</TableHead>
-                    <TableHead className="w-28 text-right">
-                      <span className="sr-only">Actions</span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {/* Placeholder rows while loading, so an empty table never reads as "no members" */}
-                  {full.isPending
-                    ? [0, 1, 2].map((i) => (
-                        <TableRow key={`loading-${i}`} aria-hidden>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Skeleton className="size-8 rounded-full" />
-                              <span className="space-y-1.5">
-                                <Skeleton className="h-3.5 w-32" />
-                                <Skeleton className="h-3 w-44" />
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton className="h-6 w-20 rounded-full" />
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            <Skeleton className="h-3.5 w-20" />
-                          </TableCell>
-                          <TableCell />
-                        </TableRow>
-                      ))
-                    : null}
-                  {members.map((member) => {
-                    const isMe = member.userId === me.user.id
-                    const role: Role = isRole(member.role) ? member.role : 'member'
-                    return (
-                      <TableRow key={member.id}>
-                        <TableCell>
-                          <div className="flex min-w-0 items-center gap-3">
-                            <Avatar className="size-8">
-                              {member.user.image ? (
-                                <AvatarImage src={member.user.image} alt="" referrerPolicy="no-referrer" />
-                              ) : null}
-                              <AvatarFallback className="text-xs">{initials(member.user.name)}</AvatarFallback>
-                            </Avatar>
-                            <span className="min-w-0">
-                              <span className="block truncate font-medium">
-                                {member.user.name}
-                                {isMe ? <span className="font-normal text-muted-foreground"> (you)</span> : null}
-                              </span>
-                              <span className="block truncate text-xs text-muted-foreground">{member.user.email}</span>
+        <div className="overflow-hidden rounded-xl border">
+          {full.isError ? (
+            <p role="alert" className="p-4 text-sm text-destructive">
+              {full.error.message}
+            </p>
+          ) : (
+            <Table>
+              <TableHeader className="bg-muted/40 [&_th]:h-10 [&_th]:text-xs [&_th]:font-medium [&_th]:text-muted-foreground">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="pl-4">
+                    Person
+                    {full.data ? <span className="ml-1.5 tabular-nums">· {members.length}</span> : null}
+                  </TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead className="hidden sm:table-cell">Joined</TableHead>
+                  <TableHead className="pr-4 text-right">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {/* Placeholder rows while loading, so an empty table never reads as "no members" */}
+                {full.isPending
+                  ? [0, 1, 2].map((i) => (
+                      <TableRow key={`loading-${i}`} aria-hidden>
+                        <TableCell className="pl-4">
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="size-8 rounded-full" />
+                            <span className="space-y-1.5">
+                              <Skeleton className="h-3.5 w-32" />
+                              <Skeleton className="h-3 w-44" />
                             </span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          {canChangeRoles && !isMe ? (
-                            <Select
-                              value={role}
-                              disabled={busyId === member.id}
-                              onValueChange={(value) =>
-                                run(
-                                  member.id,
-                                  () =>
-                                    authClient.organization.updateMemberRole({
-                                      memberId: member.id,
-                                      role: value as Role,
-                                      organizationId: company.id,
-                                    }),
-                                  `${member.user.name} is now ${value === 'admin' ? 'an' : 'a'} ${ROLE_LABELS[value as Role]}.`,
-                                )
-                              }
-                            >
-                              <SelectTrigger className="h-8 w-36" aria-label={`Role of ${member.user.name}`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {ROLES.map((option) => (
-                                  <SelectItem key={option} value={option}>
-                                    {ROLE_LABELS[option]}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Badge variant={role === 'admin' ? 'default' : 'secondary'}>{ROLE_LABELS[role]}</Badge>
-                          )}
+                          <Skeleton className="h-6 w-20 rounded-full" />
                         </TableCell>
-                        <TableCell className="hidden text-muted-foreground sm:table-cell">
-                          {dateFormat.format(new Date(member.createdAt))}
+                        <TableCell className="hidden sm:table-cell">
+                          <Skeleton className="h-3.5 w-20" />
                         </TableCell>
-                        <TableCell className="text-right">
-                          {isMe ? (
-                            <ConfirmButton
-                              label="Leave"
-                              title={`Leave ${company.name}?`}
-                              description="You'll lose access to this company's data. An Admin would need to invite you again."
-                              confirm="Leave company"
-                              busy={busyId === 'leave'}
-                              onConfirm={leave}
-                            />
-                          ) : canRemove ? (
-                            <ConfirmButton
-                              label="Remove"
-                              title={`Remove ${member.user.name}?`}
-                              description={`They'll lose access to ${company.name} straight away. You can invite them again later.`}
-                              confirm="Remove"
-                              busy={busyId === member.id}
-                              onConfirm={() =>
-                                run(
-                                  member.id,
-                                  () =>
-                                    authClient.organization.removeMember({
-                                      memberIdOrEmail: member.id,
-                                      organizationId: company.id,
-                                    }),
-                                  `${member.user.name} was removed.`,
-                                )
-                              }
-                            />
-                          ) : null}
-                        </TableCell>
+                        <TableCell />
                       </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                    ))
+                  : null}
+                {members.map((member) => {
+                  const isMe = member.userId === me.user.id
+                  const role: Role = isRole(member.role) ? member.role : 'member'
+                  return (
+                    <TableRow key={member.id}>
+                      {/* w-full max-w-0: the person column takes the spare width and truncates on phones */}
+                      <TableCell className="w-full max-w-0 pl-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <Avatar className="size-8">
+                            {member.user.image ? (
+                              <AvatarImage src={member.user.image} alt="" referrerPolicy="no-referrer" />
+                            ) : null}
+                            <AvatarFallback className="text-xs">{initials(member.user.name)}</AvatarFallback>
+                          </Avatar>
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium">
+                              {member.user.name}
+                              {isMe ? <span className="font-normal text-muted-foreground"> (you)</span> : null}
+                            </span>
+                            <span className="block truncate text-xs text-muted-foreground">{member.user.email}</span>
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {canChangeRoles && !isMe ? (
+                          <Select
+                            value={role}
+                            disabled={busyId === member.id}
+                            onValueChange={(value) =>
+                              run(
+                                member.id,
+                                () =>
+                                  authClient.organization.updateMemberRole({
+                                    memberId: member.id,
+                                    role: value as Role,
+                                    organizationId: company.id,
+                                  }),
+                                `${member.user.name} is now ${value === 'admin' ? 'an' : 'a'} ${ROLE_LABELS[value as Role]}`,
+                              )
+                            }
+                          >
+                            <SelectTrigger className="w-28 rounded-full sm:w-32" aria-label={`Role of ${member.user.name}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ROLES.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                  {ROLE_LABELS[option]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <RolePill role={role} />
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden whitespace-nowrap text-muted-foreground sm:table-cell">
+                        {dateFormat.format(new Date(member.createdAt))}
+                      </TableCell>
+                      <TableCell className="pr-4 text-right">
+                        {isMe ? (
+                          <ConfirmButton
+                            label="Leave"
+                            icon={LogOut}
+                            title={`Leave ${company.name}?`}
+                            description="You'll lose access to this company's data. An Admin would need to invite you again."
+                            confirm="Leave company"
+                            busy={busyId === 'leave'}
+                            onConfirm={leave}
+                          />
+                        ) : canRemove ? (
+                          <ConfirmButton
+                            label="Remove"
+                            icon={UserMinus}
+                            title={`Remove ${member.user.name}?`}
+                            description={`They'll lose access to ${company.name} straight away. You can invite them again later.`}
+                            confirm="Remove"
+                            busy={busyId === member.id}
+                            onConfirm={() =>
+                              run(
+                                member.id,
+                                () =>
+                                  authClient.organization.removeMember({
+                                    memberIdOrEmail: member.id,
+                                    organizationId: company.id,
+                                  }),
+                                `${member.user.name} was removed`,
+                              )
+                            }
+                          />
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </div>
 
         {pending.length > 0 ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Pending invitations</CardTitle>
-              <CardDescription>Invitations expire after 7 days. Re-inviting an email sends a fresh one.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="divide-y">
-                {pending.map((invitation) => (
-                  <li key={invitation.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                    <span className="min-w-0 text-sm">
-                      <span className="block truncate font-medium">{invitation.email}</span>
-                      <span className="text-muted-foreground">
-                        {isRole(invitation.role) ? ROLE_LABELS[invitation.role] : invitation.role} · expires{' '}
-                        {dateFormat.format(new Date(invitation.expiresAt))}
-                      </span>
+          <section aria-labelledby="pending-invitations" className="flex flex-col gap-3">
+            <div className="flex items-center gap-1.5">
+              <h3 id="pending-invitations" className="text-sm font-semibold">
+                Pending invitations
+              </h3>
+              <span className="rounded-full bg-amber-100 px-1.5 text-xs font-medium tabular-nums text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">
+                {pending.length}
+              </span>
+              <InfoTip label="About invitations">
+                Invitations expire after 7 days and work only for that email address. Inviting the same email again
+                sends a fresh link.
+              </InfoTip>
+            </div>
+            <ul className="divide-y overflow-hidden rounded-xl border">
+              {pending.map((invitation) => (
+                <li key={invitation.id} className="flex items-center gap-3 px-4 py-3">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                    <Mail className="size-4 text-muted-foreground" aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1 text-sm">
+                    <span className="block truncate font-medium">{invitation.email}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {isRole(invitation.role) ? ROLE_LABELS[invitation.role] : invitation.role} · expires{' '}
+                      {dateFormat.format(new Date(invitation.expiresAt))}
                     </span>
-                    {canCancelInvites ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="shrink-0 rounded-full"
-                        disabled={busyId === invitation.id}
-                        onClick={() =>
-                          run(
-                            invitation.id,
-                            () => authClient.organization.cancelInvitation({ invitationId: invitation.id }),
-                            `Invitation to ${invitation.email} cancelled.`,
-                          )
-                        }
-                      >
-                        {busyId === invitation.id ? 'Cancelling...' : 'Cancel'}
-                      </Button>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+                  </span>
+                  <span className="hidden h-6 shrink-0 items-center gap-1 rounded-full bg-amber-50 py-0.5 pr-2.5 pl-1.5 text-xs font-medium text-amber-900 ring-1 ring-amber-300/70 ring-inset sm:inline-flex dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-800">
+                    <Clock className="size-3.5 text-amber-600 dark:text-amber-400" strokeWidth={2.5} aria-hidden />
+                    Invited
+                  </span>
+                  {canCancelInvites ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 rounded-full text-muted-foreground"
+                      disabled={busyId === invitation.id}
+                      onClick={() =>
+                        run(
+                          invitation.id,
+                          () => authClient.organization.cancelInvitation({ invitationId: invitation.id }),
+                          `Invitation to ${invitation.email} cancelled`,
+                        )
+                      }
+                    >
+                      {busyId === invitation.id ? 'Cancelling...' : 'Cancel'}
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
-      </div>
+      </PageBody>
+
+      {canInvite ? (
+        <InviteDialog
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          myRole={myRole}
+          onInvited={async (email) => {
+            toast.success(`Invitation sent to ${email}`)
+            await queryClient.invalidateQueries({ queryKey: companyKey })
+          }}
+        />
+      ) : null}
     </>
   )
 }
@@ -352,6 +367,8 @@ export function MembersPage() {
 /** A small button that asks for confirmation before doing something hard to undo. */
 function ConfirmButton(props: {
   label: string
+  /** Shown instead of the label on phones (the label stays as the accessible name) */
+  icon: LucideIcon
   title: string
   description: string
   confirm: string
@@ -361,8 +378,15 @@ function ConfirmButton(props: {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={props.busy}>
-          {props.busy ? 'Working...' : props.label}
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={props.label}
+          className="size-8 rounded-full p-0 text-destructive hover:text-destructive sm:w-auto sm:px-2.5"
+          disabled={props.busy}
+        >
+          <props.icon className="sm:hidden" aria-hidden />
+          <span className="hidden sm:inline">{props.busy ? 'Working...' : props.label}</span>
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -387,15 +411,18 @@ const inviteSchema = z.object({
 })
 type InviteValues = z.infer<typeof inviteSchema>
 
-function InviteForm({
+function InviteDialog({
+  open,
+  onOpenChange,
   myRole,
   onInvited,
-  onError,
 }: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   myRole: Role | null
   onInvited: (email: string) => Promise<void>
-  onError: (message: string) => void
 }) {
+  const [error, setError] = useState<string | null>(null)
   const {
     register,
     control,
@@ -409,31 +436,36 @@ function InviteForm({
   const grantable = ROLES.filter((role) => role !== 'admin' || myRole === 'admin')
 
   async function onSubmit({ email, role }: InviteValues) {
+    setError(null)
     try {
       const { error } = await authClient.organization.inviteMember({ email, role, resend: true })
       if (error) {
-        onError(companyErrorMessage(error))
+        setError(companyErrorMessage(error))
         return
       }
       reset({ email: '', role })
+      onOpenChange(false)
       await onInvited(email)
     } catch {
-      onError(NETWORK_ERROR_MESSAGE)
+      setError(NETWORK_ERROR_MESSAGE)
     }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <UserPlus className="size-4 text-muted-foreground" aria-hidden />
-          Invite someone
-        </CardTitle>
-        <CardDescription>They&apos;ll get an email with a link to join. It works only for that email address.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:items-start">
-          <div className="space-y-2">
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) setError(null)
+        onOpenChange(next)
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Invite someone</DialogTitle>
+          <DialogDescription>They&apos;ll get an email with a link to join. It works only for that address.</DialogDescription>
+        </DialogHeader>
+        <form id="invite-form" onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="invite-email">Email</Label>
             <Input
               id="invite-email"
@@ -441,6 +473,7 @@ function InviteForm({
               autoComplete="off"
               spellCheck={false}
               placeholder="colleague@company.com"
+              className="h-10"
               aria-invalid={Boolean(errors.email)}
               aria-describedby={errors.email ? 'invite-email-error' : undefined}
               {...register('email')}
@@ -451,14 +484,14 @@ function InviteForm({
               </p>
             ) : null}
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="invite-role">Role</Label>
             <Controller
               control={control}
               name="role"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger id="invite-role" className="w-full">
+                  <SelectTrigger id="invite-role" className="w-full data-[size=default]:h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -471,13 +504,23 @@ function InviteForm({
                 </Select>
               )}
             />
+            <p className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[selectedRole]}</p>
           </div>
-          <Button type="submit" className="rounded-full sm:mt-[1.375rem]" disabled={isSubmitting}>
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+        </form>
+        <DialogFooter>
+          <Button variant="ghost" className="rounded-full" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="submit" form="invite-form" className="rounded-full" disabled={isSubmitting}>
             {isSubmitting ? 'Sending...' : 'Send invite'}
           </Button>
-          <p className="text-sm text-muted-foreground sm:col-span-3">{ROLE_DESCRIPTIONS[selectedRole]}</p>
-        </form>
-      </CardContent>
-    </Card>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

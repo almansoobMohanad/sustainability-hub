@@ -151,6 +151,21 @@ export async function listEntries(
   return { page, nextCursor: rows.length > limit ? encodeCursor(page[page.length - 1]) : null, total }
 }
 
+/**
+ * How many entries have each status (for the status tabs and the "waiting for
+ * verification" badge). One grouped count, served by the company + period index.
+ */
+export async function statusCounts(db: Database, companyId: string, filters: Pick<EntryFilters, 'year' | 'scope'>) {
+  const rows = await db
+    .select({ status: emissionEntries.status, entries: count() })
+    .from(emissionEntries)
+    .where(and(...filterConditions(companyId, filters)))
+    .groupBy(emissionEntries.status)
+  const counts = Object.fromEntries(ENTRY_STATUSES.map((status) => [status, 0])) as Record<EntryStatus, number>
+  for (const row of rows) counts[row.status as EntryStatus] = row.entries
+  return counts
+}
+
 export async function findEntry(db: Database, companyId: string, entryId: string) {
   const [row] = await selectEntries(db)
     .where(and(eq(emissionEntries.organizationId, companyId), eq(emissionEntries.id, entryId)))

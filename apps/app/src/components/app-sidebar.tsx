@@ -20,13 +20,15 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@hub/ui/components/sidebar'
-import { ROLE_LABELS, isRole } from '@hub/shared/permissions'
+import { ROLE_LABELS, can, isRole } from '@hub/shared/permissions'
 import { forgetSession } from '@/features/auth/session'
 import { forgetCompanyData, useMe } from '@/features/company/me'
 import { myInvitationsQueryOptions } from '@/features/company/my-invitations'
+import { statusCountsQueryOptions } from '@/features/emissions/queries'
 import { authClient } from '@/lib/auth-client'
 import { appNav } from '@/lib/nav'
 import { SITE_URL } from '@/lib/site-links'
@@ -50,7 +52,14 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
   const router = useRouter()
   const queryClient = useQueryClient()
   // Loaded by the _app guard: the signed-in person, their companies, the active one
-  const { user, companies, company } = useMe()
+  const { user, companies, company, role } = useMe()
+  // Managers and Admins: how many entries (all years) wait for verification, next to "Entries"
+  const canVerify = can(role, 'emissions', 'verify')
+  const { data: counts } = useQuery({
+    ...statusCountsQueryOptions(company?.id ?? '', { year: null, scope: null }),
+    enabled: Boolean(company) && canVerify,
+  })
+  const waiting = canVerify ? (counts?.pending ?? 0) : 0
   // Invitations to other companies waiting for this person (dot + menu section)
   const { data: invitations = [] } = useQuery(myInvitationsQueryOptions)
   const invitationSummary =
@@ -183,8 +192,21 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
                       <Link to={item.to}>
                         <item.icon aria-hidden />
                         <span>{item.label}</span>
+                        {item.badge === 'pending-entries' && waiting > 0 ? (
+                          <span className="sr-only">
+                            {waiting === 1 ? '(1 entry waiting for verification)' : `(${waiting} entries waiting for verification)`}
+                          </span>
+                        ) : null}
                       </Link>
                     </SidebarMenuButton>
+                    {item.badge === 'pending-entries' && waiting > 0 ? (
+                      <SidebarMenuBadge
+                        aria-hidden
+                        className="rounded-full bg-amber-100 px-1.5 text-amber-900 peer-hover/menu-button:text-amber-900 peer-data-active/menu-button:text-amber-900 dark:bg-amber-900/60 dark:text-amber-100"
+                      >
+                        {waiting > 99 ? '99+' : waiting}
+                      </SidebarMenuBadge>
+                    ) : null}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>

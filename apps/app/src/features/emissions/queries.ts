@@ -12,6 +12,7 @@ import type {
   EntryChanges,
   EntryFilters,
   NewEmissionEntry,
+  StatusCounts,
   YearSummary,
 } from './types'
 
@@ -32,6 +33,7 @@ export const emissionKeys = {
   lists: (companyId: string) => [...base(companyId), 'list'] as const,
   summary: (companyId: string, year: number) => [...base(companyId), 'summary', year] as const,
   detail: (companyId: string, id: string) => [...base(companyId), 'detail', id] as const,
+  counts: (companyId: string, filters: CountFilters) => [...base(companyId), 'counts', filters] as const,
 }
 
 type EntryPage = { items: EmissionEntry[]; nextCursor: string | null; total: number | null }
@@ -59,6 +61,24 @@ export const summaryQueryOptions = (companyId: string, year: number) =>
     queryKey: emissionKeys.summary(companyId, year),
     queryFn: () => api<YearSummary>(`/emissions/summary?year=${year}`),
     placeholderData: keepPreviousData, // changing the year keeps the page on screen while loading
+  })
+
+type CountFilters = { year: number | null; scope: number | null }
+
+/**
+ * Entries per status, counted by the server. No year = all years: the sidebar's
+ * "waiting for verification" badge uses that. Refreshed with every change to entries.
+ */
+export const statusCountsQueryOptions = (companyId: string, filters: CountFilters) =>
+  queryOptions({
+    queryKey: emissionKeys.counts(companyId, filters),
+    queryFn: ({ signal }) => {
+      const params = new URLSearchParams()
+      if (filters.year) params.set('year', String(filters.year))
+      if (filters.scope) params.set('scope', String(filters.scope))
+      return api<StatusCounts>(`/emissions/status-counts?${params}`, { signal })
+    },
+    placeholderData: keepPreviousData, // changing a filter keeps the old numbers until the new ones arrive
   })
 
 export const entryDetailQueryOptions = (companyId: string, id: string) =>

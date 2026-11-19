@@ -11,6 +11,8 @@ export type AppNavItem = {
   label: string
   to: NonNullable<LinkProps['to']>
   icon: LucideIcon
+  /** A live count next to the label (only shown when above 0) */
+  badge?: 'pending-entries'
 }
 
 export type AppNavGroup = {
@@ -27,7 +29,7 @@ export const appNav: AppNavGroup[] = [
     label: 'Emissions',
     items: [
       { label: 'Add emissions', to: '/emissions/new', icon: CirclePlus },
-      { label: 'Entries', to: '/emissions', icon: Rows3 },
+      { label: 'Entries', to: '/emissions', icon: Rows3, badge: 'pending-entries' },
     ],
   },
   {

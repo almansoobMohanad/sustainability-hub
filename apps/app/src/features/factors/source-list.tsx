@@ -62,7 +62,10 @@ function FallbackYear({ factorYear, year }: { factorYear: number; year: number }
   )
 }
 
-/** Sources grouped under Scope 1, 2 and 3 headings (empty scopes left out) */
+/**
+ * Sources grouped under Scope 1, 2 and 3 header rows (empty scopes left out),
+ * meant to sit in a bordered, rounded container (like the Entries table).
+ */
 export function SourcesByScope<T extends ListedSource>({
   sources,
   renderRow,
@@ -71,19 +74,25 @@ export function SourcesByScope<T extends ListedSource>({
   renderRow: (source: T) => ReactNode
 }) {
   return (
-    <div className="space-y-6">
+    <div className="divide-y">
       {([1, 2, 3] as Scope[]).map((scope) => {
         const inScope = sources.filter((source) => source.scope === scope)
         if (inScope.length === 0) return null
         return (
           <section key={scope} aria-labelledby={`scope-${scope}-heading`}>
-            <h2 id={`scope-${scope}-heading`} className="text-sm font-semibold">
-              {SCOPE_INFO[scope].label}{' '}
-              <span className="font-normal text-muted-foreground">
-                · {SCOPE_INFO[scope].description} ({inScope.length})
+            <h3
+              id={`scope-${scope}-heading`}
+              className="flex items-center gap-2 bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground"
+            >
+              <span className="size-2 shrink-0 rounded-full" style={{ background: `var(--scope-${scope})` }} aria-hidden />
+              <span className="text-foreground">{SCOPE_INFO[scope].label}</span>
+              {SCOPE_INFO[scope].short}
+              <span className="ml-auto tabular-nums">
+                {inScope.length} {inScope.length === 1 ? 'source' : 'sources'}
               </span>
-            </h2>
-            <ul className="mt-1 divide-y">{inScope.map(renderRow)}</ul>
+            </h3>
+            {/* Rows get the container's side padding here (the Add sources dialog lists them unpadded) */}
+            <ul className="divide-y border-t [&>li]:px-4">{inScope.map(renderRow)}</ul>
           </section>
         )
       })}
