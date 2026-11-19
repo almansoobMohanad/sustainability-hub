@@ -29,6 +29,13 @@
       "when": 1795005282608,
       "tag": "0003_factor_search",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795007235137,
+      "tag": "0004_emission_entries",
+      "breakpoints": true
     }
   ]
 }

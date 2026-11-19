@@ -1,5 +1,6 @@
 import { sql, type SQL } from 'drizzle-orm'
 import {
+  boolean,
   check,
   index,
   integer,
@@ -137,6 +138,8 @@ export const companySettings = pgTable('company_settings', {
     .references(() => organizations.id, { onDelete: 'cascade' }),
   /** One of SECTORS in @hub/shared/sectors; null until chosen */
   sector: text(),
+  /** New entries start Pending and need a Manager/Admin to verify them (false: verified automatically) */
+  requireVerification: boolean().notNull().default(true),
   updatedAt: timestamp({ withTimezone: true })
     .notNull()
     .defaultNow()

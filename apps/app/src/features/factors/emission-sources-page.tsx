@@ -73,7 +73,6 @@ export function EmissionSourcesPage() {
     <>
       <PageHeader
         title="Emission sources"
-        demoData={false}
         actions={
           canManage ? (
             <Button size="sm" className="rounded-full" onClick={() => setDialogOpen(true)}>

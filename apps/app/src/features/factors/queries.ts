@@ -95,10 +95,16 @@ export const sourceCategoriesQueryOptions = (scope: Scope | null) =>
 
 /* Company data: keys start with ['company', id] like the rest of the company pages */
 
+export type CompanySettings = {
+  sector: Sector | null
+  /** New entries start Pending and need a Manager/Admin to verify them (false: verified automatically) */
+  requireVerification: boolean
+}
+
 export const companySettingsQueryOptions = (companyId: string) =>
   queryOptions({
     queryKey: ['company', companyId, 'settings'],
-    queryFn: () => api<{ sector: Sector | null }>('/company/settings'),
+    queryFn: () => api<CompanySettings>('/company/settings'),
   })
 
 export const companySourcesQueryOptions = (companyId: string, year: number) =>
@@ -111,8 +117,8 @@ export const companySourcesQueryOptions = (companyId: string, year: number) =>
 export function useUpdateCompanySettings(companyId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (settings: { sector: Sector | null }) =>
-      api<{ sector: Sector | null }>('/company/settings', { method: 'PATCH', json: settings }),
+    mutationFn: (changes: Partial<CompanySettings>) =>
+      api<CompanySettings>('/company/settings', { method: 'PATCH', json: changes }),
     onSuccess: (settings) => queryClient.setQueryData(['company', companyId, 'settings'], settings),
   })
 }
