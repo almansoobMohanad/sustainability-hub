@@ -5,10 +5,11 @@ export type Scope = 1 | 2 | 3
 
 export const SCOPES: Scope[] = [1, 2, 3]
 
-export const SCOPE_INFO: Record<Scope, { label: string; description: string }> = {
-  1: { label: 'Scope 1', description: 'Direct emissions from sources you own or control' },
-  2: { label: 'Scope 2', description: 'Indirect emissions from purchased energy' },
-  3: { label: 'Scope 3', description: 'Other indirect emissions in your value chain' },
+/** short = a one- or two-word name for tight places (e.g. the scope picker) */
+export const SCOPE_INFO: Record<Scope, { label: string; short: string; description: string }> = {
+  1: { label: 'Scope 1', short: 'Direct', description: 'Direct emissions from sources you own or control' },
+  2: { label: 'Scope 2', short: 'Energy', description: 'Indirect emissions from purchased energy' },
+  3: { label: 'Scope 3', short: 'Value chain', description: 'Other indirect emissions in your value chain' },
 }
 
 type Person = { id: string; name: string }
@@ -57,6 +58,9 @@ export type NewEmissionEntry = {
 }
 
 export type EntryChanges = Partial<Pick<NewEmissionEntry, 'unit' | 'amount' | 'period' | 'dataSource' | 'notes'>>
+
+/** Entries per status (GET /v1/emissions/status-counts) */
+export type StatusCounts = Record<EntryStatus, number>
 
 export type EntryFilters = { year: number | null; status: EntryStatus | null; scope: Scope | null; mine?: boolean }
 
