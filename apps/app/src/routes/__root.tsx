@@ -8,6 +8,7 @@ import {
   type ErrorComponentProps,
 } from '@tanstack/react-router'
 import { Button } from '@hub/ui/components/button'
+import { Toaster } from '@hub/ui/components/sonner'
 import { TooltipProvider } from '@hub/ui/components/tooltip'
 
 /*
@@ -30,6 +31,8 @@ function RootComponent() {
       <TooltipProvider delayDuration={300}>
         <Outlet />
       </TooltipProvider>
+      {/* Short confirmations (e.g. "Entry added"). Top centre: never covers a page's own bottom bar or buttons */}
+      <Toaster position="top-center" />
     </>
   )
 }
