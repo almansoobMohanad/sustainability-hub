@@ -8,5 +8,5 @@
 export * from './auth'
 // Emission factor library, company settings and the sources each company tracks
 export * from './factors'
-// Emission entries and their audit trail
+// Emission entries, their audit trail and spreadsheet imports
 export * from './emissions'

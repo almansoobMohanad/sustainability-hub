@@ -106,6 +106,7 @@ export type EntryFilters = {
   status?: EntryStatus
   scope?: number
   sourceId?: string
+  importId?: string
   createdBy?: string
 }
 
@@ -118,6 +119,7 @@ function filterConditions(companyId: string, filters: EntryFilters) {
     filters.status ? eq(emissionEntries.status, filters.status) : undefined,
     filters.scope ? eq(emissionEntries.scope, filters.scope) : undefined,
     filters.sourceId ? eq(emissionEntries.sourceId, filters.sourceId) : undefined,
+    filters.importId ? eq(emissionEntries.importId, filters.importId) : undefined,
     filters.createdBy ? eq(emissionEntries.createdBy, filters.createdBy) : undefined,
   ]
 }
@@ -155,7 +157,7 @@ export async function listEntries(
  * How many entries have each status (for the status tabs and the "waiting for
  * verification" badge). One grouped count, served by the company + period index.
  */
-export async function statusCounts(db: Database, companyId: string, filters: Pick<EntryFilters, 'year' | 'scope'>) {
+export async function statusCounts(db: Database, companyId: string, filters: Pick<EntryFilters, 'year' | 'scope' | 'importId'>) {
   const rows = await db
     .select({ status: emissionEntries.status, entries: count() })
     .from(emissionEntries)

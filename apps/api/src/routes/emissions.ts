@@ -30,6 +30,7 @@ import {
 } from '../emissions/entry-store'
 import { yearSummary } from '../emissions/summary'
 import { createRouter, currentYear, errorResponse, forbidden } from './common'
+import { registerImportRoutes } from './imports'
 
 /*
   Emission entries of the active company (requireCompany), and the dashboard summary.
@@ -44,6 +45,8 @@ import { createRouter, currentYear, errorResponse, forbidden } from './common'
     POST   /api/v1/emissions/entries/{id}/reopen     Manager/Admin, verified -> Pending
     POST   /api/v1/emissions/entries/verify          Manager/Admin, up to 100 Pending entries at once
     GET    /api/v1/emissions/summary?year=2026       dashboard totals (SQL aggregation)
+    GET    /api/v1/emissions/status-counts           entries per status (status tabs, sidebar badge)
+    .../emissions/imports...                         spreadsheet imports (routes/imports.ts)
 
   Who may do what lives in @hub/shared/emissions (entryActions), shared with the app.
   Every change writes an event (the audit trail) in the same transaction.
@@ -136,6 +139,7 @@ const listRoute = createRoute({
       status: z.enum(ENTRY_STATUSES).optional(),
       scope: z.coerce.number().int().min(1).max(3).optional(),
       sourceId: z.uuid().optional(),
+      importId: z.uuid().optional().openapi({ description: 'Only entries of this spreadsheet import' }),
       mine: z.enum(['true', 'false']).optional().openapi({ description: 'Only entries I created' }),
       limit: z.coerce.number().int().min(1).max(50).default(30),
       cursor: z.string().max(200).optional(),
@@ -323,6 +327,7 @@ const statusCountsRoute = createRoute({
     query: z.object({
       year: z.coerce.number().int().min(ENTRY_LIMITS.firstYear).max(2100).optional(),
       scope: z.coerce.number().int().min(1).max(3).optional(),
+      importId: z.uuid().optional(),
     }),
   },
   responses: {
@@ -359,6 +364,7 @@ const snapshot = (row: { periodStart: string; amount: number; unit: string; co2e
 export function emissionRoutes({ db, auth }: { db: Database; auth: Auth }) {
   const app = createRouter<{ Variables: CompanyVariables }>()
   app.use('/v1/emissions/*', requireSession(auth), requireCompany(db))
+  registerImportRoutes(app, { db })
 
   /** Re-read an entry after a change, in the list shape */
   async function reload(companyId: string, id: string) {
@@ -366,7 +372,7 @@ export function emissionRoutes({ db, auth }: { db: Database; auth: Auth }) {
   }
 
   app.openapi(listRoute, async (c) => {
-    const { year, status, scope, sourceId, mine, limit, cursor } = c.req.valid('query')
+    const { year, status, scope, sourceId, importId, mine, limit, cursor } = c.req.valid('query')
     const position = cursor ? decodeCursor(cursor) : null
     if (cursor && !position) {
       return c.json({ error: { code: 'invalid_request', message: 'cursor: Invalid cursor' } }, 400)
@@ -374,7 +380,7 @@ export function emissionRoutes({ db, auth }: { db: Database; auth: Auth }) {
     const result = await listEntries(
       db,
       c.var.company.id,
-      { year, status, scope, sourceId, createdBy: mine === 'true' ? c.var.user.id : undefined },
+      { year, status, scope, sourceId, importId, createdBy: mine === 'true' ? c.var.user.id : undefined },
       { limit, cursor: position },
     )
     return c.json({ items: result.page.map(toEntryJson), nextCursor: result.nextCursor, total: result.total }, 200)
@@ -683,8 +689,8 @@ export function emissionRoutes({ db, auth }: { db: Database; auth: Auth }) {
   })
 
   app.openapi(statusCountsRoute, async (c) => {
-    const { year, scope } = c.req.valid('query')
-    return c.json(await statusCounts(db, c.var.company.id, { year, scope }), 200)
+    const { year, scope, importId } = c.req.valid('query')
+    return c.json(await statusCounts(db, c.var.company.id, { year, scope, importId }), 200)
   })
 
   app.openapi(summaryRoute, async (c) => {
