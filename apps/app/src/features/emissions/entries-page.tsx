@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { Check, CirclePlus, Clock, MoreHorizontal, X } from 'lucide-react'
+import { Check, CirclePlus, Clock, FileSpreadsheet, MoreHorizontal, X } from 'lucide-react'
 import { Button } from '@hub/ui/components/button'
 import { Checkbox } from '@hub/ui/components/checkbox'
 import {
@@ -21,6 +21,7 @@ import { can } from '@hub/shared/permissions'
 import { PageHeader } from '@/components/page-header'
 import { PageBody, PageTitle } from '@/components/page-layout'
 import { useMe } from '@/features/company/me'
+import { importQueryOptions } from '@/features/imports/queries'
 import { unitLabel } from '@/features/factors/format'
 import { useLoadMore } from '@/hooks/use-load-more'
 import { errorMessage } from '@/lib/api'
@@ -65,7 +66,7 @@ export function EntriesPage() {
   const navigate = useNavigate({ from: '/emissions/' })
   const thisYear = new Date().getFullYear()
   const year = search.year === 'all' ? null : (search.year ?? thisYear)
-  const filters = { year, status: search.status ?? null, scope: search.scope ?? null }
+  const filters = { year, status: search.status ?? null, scope: search.scope ?? null, importId: search.import ?? null }
   const filtersKey = JSON.stringify(filters)
 
   const entries = useInfiniteQuery(entriesQueryOptions(company.id, filters))
@@ -77,7 +78,9 @@ export function EntriesPage() {
 
   const verifier = can(me.role, 'emissions', 'verify')
   // Counts for the status tabs (this year/scope) and, for verifiers, everything waiting (all years)
-  const counts = useQuery(statusCountsQueryOptions(company.id, { year, scope: filters.scope })).data
+  const counts = useQuery(statusCountsQueryOptions(company.id, { year, scope: filters.scope, importId: filters.importId })).data
+  // The file name for the "From <file>" filter chip
+  const fromImport = useQuery({ ...importQueryOptions(company.id, search.import ?? ''), enabled: Boolean(search.import) }).data
   const waiting = useQuery({ ...statusCountsQueryOptions(company.id, { year: null, scope: null }), enabled: verifier }).data
     ?.pending
   const actionsFor = (entry: EmissionEntry) =>
@@ -137,7 +140,7 @@ export function EntriesPage() {
     else setDialog({ kind: action, entry })
   }
 
-  const filtered = filters.status !== null || filters.scope !== null || search.year !== undefined
+  const filtered = filters.status !== null || filters.scope !== null || search.year !== undefined || search.import !== undefined
 
   /** Selecting Pending entries for bulk verify (at most 100 at a time) */
   function toggleSelected(entryId: string, checked: boolean) {
@@ -325,6 +328,21 @@ export function EntriesPage() {
                 ))}
               </SelectContent>
             </Select>
+            {search.import ? (
+              <span className="flex h-9 max-w-64 items-center gap-1.5 rounded-full border bg-background pr-1 pl-3 text-sm">
+                <FileSpreadsheet className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                <span className="truncate">From {fromImport?.fileName ?? 'an import'}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 shrink-0 rounded-full"
+                  aria-label="Show entries of all imports and forms"
+                  onClick={() => setFilter({ import: undefined })}
+                >
+                  <X aria-hidden />
+                </Button>
+              </span>
+            ) : null}
             {filtered ? (
               <Button
                 variant="ghost"
@@ -377,9 +395,15 @@ export function EntriesPage() {
             </p>
           ) : items.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-14 text-center">
-              <p className="font-medium">{filtered || year ? 'No entries match these filters' : 'No entries yet'}</p>
+              <p className="font-medium">
+                {search.import ? 'No entries from this import' : filtered || year ? 'No entries match these filters' : 'No entries yet'}
+              </p>
               <p className="max-w-sm text-sm text-muted-foreground">
-                {filters.status === 'pending'
+                {search.import
+                  ? fromImport?.undoneAt
+                    ? 'This import was undone, so its entries were deleted.'
+                    : 'Try another year, status or scope.'
+                  : filters.status === 'pending'
                   ? 'Nothing is waiting for verification here.'
                   : year && !filters.status && !filters.scope
                     ? `Nothing recorded for ${year} yet.`

@@ -47,6 +47,7 @@ export const entriesQueryOptions = (companyId: string, filters: EntryFilters, li
       if (filters.year) params.set('year', String(filters.year))
       if (filters.status) params.set('status', filters.status)
       if (filters.scope) params.set('scope', String(filters.scope))
+      if (filters.importId) params.set('importId', filters.importId)
       if (filters.mine) params.set('mine', 'true')
       if (pageParam) params.set('cursor', pageParam)
       return api<EntryPage>(`/emissions/entries?${params}`, { signal })
@@ -63,7 +64,7 @@ export const summaryQueryOptions = (companyId: string, year: number) =>
     placeholderData: keepPreviousData, // changing the year keeps the page on screen while loading
   })
 
-type CountFilters = { year: number | null; scope: number | null }
+type CountFilters = { year: number | null; scope: number | null; importId?: string | null }
 
 /**
  * Entries per status, counted by the server. No year = all years: the sidebar's
@@ -76,6 +77,7 @@ export const statusCountsQueryOptions = (companyId: string, filters: CountFilter
       const params = new URLSearchParams()
       if (filters.year) params.set('year', String(filters.year))
       if (filters.scope) params.set('scope', String(filters.scope))
+      if (filters.importId) params.set('importId', filters.importId)
       return api<StatusCounts>(`/emissions/status-counts?${params}`, { signal })
     },
     placeholderData: keepPreviousData, // changing a filter keeps the old numbers until the new ones arrive
