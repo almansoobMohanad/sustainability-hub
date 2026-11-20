@@ -62,7 +62,14 @@ export type EntryChanges = Partial<Pick<NewEmissionEntry, 'unit' | 'amount' | 'p
 /** Entries per status (GET /v1/emissions/status-counts) */
 export type StatusCounts = Record<EntryStatus, number>
 
-export type EntryFilters = { year: number | null; status: EntryStatus | null; scope: Scope | null; mine?: boolean }
+export type EntryFilters = {
+  year: number | null
+  status: EntryStatus | null
+  scope: Scope | null
+  /** Only the entries of one spreadsheet import */
+  importId?: string | null
+  mine?: boolean
+}
 
 export type ScopeTotals = Record<Scope, number>
 

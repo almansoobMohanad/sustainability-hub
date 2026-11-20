@@ -2,7 +2,7 @@ import { useEffect, useMemo, type FormEvent, type ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Check, Layers, Loader2 } from 'lucide-react'
+import { Check, FileUp, Layers, Loader2 } from 'lucide-react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { Button } from '@hub/ui/components/button'
@@ -21,6 +21,7 @@ import { PageBody, PageSection, PageTitle } from '@/components/page-layout'
 import { useMe } from '@/features/company/me'
 import { formatFactor, perUnit, unitLabel } from '@/features/factors/format'
 import { companySourcesQueryOptions, type CompanySource } from '@/features/factors/queries'
+import { ImportDialog } from '@/features/imports/import-dialog'
 import { errorMessage } from '@/lib/api'
 import { currentPeriod, formatNumber, formatPeriod, formatTonnes } from '@/lib/format'
 import { useCreateEntry } from './queries'
@@ -32,6 +33,9 @@ import { SCOPES, SCOPE_INFO } from './types'
   Emission sources), with the factors of the reporting month's year. The
   calculation shown here is a preview; the server calculates and stores the
   real value with the factor it used.
+
+  "Import from file" (next to the title) opens the spreadsheet import dialog,
+  for many entries at once.
 
   Layout: one flat form in numbered steps (Activity, Quantity, Evidence) that
   ends in the live result (Emissions) and the buttons, all on the same grid;
@@ -204,6 +208,18 @@ export function AddEmissionPage() {
                 Pending until a Manager or Admin verifies them.
               </span>
             </>
+          }
+          actions={
+            noSources ? null : (
+              <ImportDialog
+                trigger={
+                  <Button variant="outline" className="h-9 rounded-full px-4">
+                    <FileUp aria-hidden />
+                    Import from file
+                  </Button>
+                }
+              />
+            )
           }
         />
 

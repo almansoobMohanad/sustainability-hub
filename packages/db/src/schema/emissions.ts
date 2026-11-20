@@ -3,6 +3,7 @@ import {
   check,
   date,
   index,
+  integer,
   jsonb,
   numeric,
   pgTable,
@@ -65,6 +66,8 @@ export const emissionEntries = pgTable(
     /** Who verified or rejected it (null for automatic verification) */
     reviewedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
     reviewedAt: timestamp({ withTimezone: true }),
+    /** The spreadsheet import it came from (null: added with the form) */
+    importId: uuid().references(() => emissionImports.id, { onDelete: 'set null' }),
   },
   (table) => [
     /*
@@ -82,10 +85,42 @@ export const emissionEntries = pgTable(
     index('emission_entries_company_pending_idx')
       .on(table.organizationId, table.periodStart.desc(), table.createdAt.desc(), table.id.desc())
       .where(sql`${table.status} = 'pending'`),
+    // "Entries from this import" and undoing an import; most entries have no import, so partial
+    index('emission_entries_import_idx')
+      .on(table.importId)
+      .where(sql`${table.importId} is not null`),
     check('emission_entries_status_check', sql`${table.status} in ('pending', 'verified', 'rejected')`),
     check('emission_entries_scope_check', sql`${table.scope} between 1 and 3`),
     check('emission_entries_amount_check', sql`${table.amount} > 0`),
     check('emission_entries_period_check', sql`${table.periodEnd} >= ${table.periodStart}`),
+  ],
+)
+
+/*
+  Spreadsheet imports: who imported which file and when, so the entries of one
+  import can be listed together and the whole import undone (its entries
+  deleted, with an audit event each). The row stays after an undo (undone_at).
+*/
+export const emissionImports = pgTable(
+  'emission_imports',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    organizationId: uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    fileName: text().notNull(),
+    /** Entries created */
+    entryCount: integer().notNull(),
+    /** Rows with problems that the person chose to skip */
+    skippedRows: integer().notNull().default(0),
+    createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    undoneBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+    undoneAt: timestamp({ withTimezone: true }),
+  },
+  (table) => [
+    // The "Recent imports" list: newest first, keyset pages on (created_at, id)
+    index('emission_imports_company_created_idx').on(table.organizationId, table.createdAt.desc(), table.id.desc()),
   ],
 )
 

@@ -59,8 +59,15 @@ function describeEvent(event: EntryEvent) {
         ? changesText(event.details)
         : event.details.bulk
           ? ' (with others)'
-          : ''
+          : importText(event.details.import)
   return `${EVENT_LABELS[event.action]} ${who}${extra}`
+}
+
+/** "from fuel-2025.xlsx, row 14" for entries added by a spreadsheet import */
+function importText(value: unknown) {
+  if (!value || typeof value !== 'object') return ''
+  const { fileName, row } = value as { fileName?: unknown; row?: unknown }
+  return typeof fileName === 'string' ? ` from ${fileName}${typeof row === 'number' ? `, row ${row}` : ''}` : ''
 }
 
 /** A changed value as people read it: 8000 -> "8,000", "2026-03" -> "Mar 2026", "litres" -> "litres" */

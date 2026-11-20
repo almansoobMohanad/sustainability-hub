@@ -36,6 +36,13 @@
       "when": 1795007235137,
       "tag": "0004_emission_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795179282045,
+      "tag": "0005_emission_imports",
+      "breakpoints": true
     }
   ]
 }
