@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "turbo dev",
+    "dev:supabase": "node scripts/with-env-file.mjs .env.supabase turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
@@ -12,7 +13,9 @@
     "db:down": "docker compose down",
     "db:generate": "pnpm --filter @hub/db db:generate",
     "db:migrate": "pnpm --filter @hub/db db:migrate",
-    "db:studio": "pnpm --filter @hub/db db:studio"
+    "db:studio": "pnpm --filter @hub/db db:studio",
+    "db:latency": "pnpm --filter @hub/api db:latency",
+    "db:latency:supabase": "pnpm --filter @hub/api db:latency:supabase"
   },
   "devEngines": {
     "packageManager": {

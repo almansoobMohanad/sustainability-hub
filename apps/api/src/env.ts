@@ -12,10 +12,27 @@ import { DEV_DATABASE_URL } from '@hub/db'
   using development settings.
 */
 
-// Load apps/api/.env if there is one (Node's built-in loader; real environment
-// variables still win over the file).
+/*
+  Settings files (Node's built-in loader; real environment variables always win,
+  and a value loaded first is never replaced by a later file):
+  1. HUB_ENV_FILE, if set: a profile such as .env.supabase (`pnpm dev:supabase`),
+     whose values override .env, e.g. another DATABASE_URL
+  2. apps/api/.env, if there is one
+*/
+export const loadedEnvFiles: string[] = []
+const profile = process.env.HUB_ENV_FILE
+if (profile) {
+  try {
+    process.loadEnvFile(profile)
+    loadedEnvFiles.push(profile)
+  } catch {
+    console.error(`Can't read ${profile} (HUB_ENV_FILE) in ${process.cwd()}. Copy ${profile}.example to ${profile} and fill it in.`)
+    process.exit(1)
+  }
+}
 try {
   process.loadEnvFile()
+  loadedEnvFiles.push('.env')
 } catch {
   // no .env file: use the environment and the defaults below
 }
@@ -32,6 +49,16 @@ const EnvSchema = z.object({
   HOST: z.string().default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATABASE_URL: devDefault(z.url(), DEV_DATABASE_URL),
+
+  /**
+   * The database server's CA certificate: a file path (relative to apps/api) or
+   * the PEM text itself. Required for Supabase: the connection is encrypted and
+   * the server's identity checked. Not needed for the local Docker database.
+   */
+  DATABASE_CA_CERT: z.string().trim().optional().transform((value) => value || undefined),
+
+  /** Database connections kept open at most. Default 10; lower for small hosted plans. */
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
 
   /**
    * The address people use to open the app. Links in emails point here, and

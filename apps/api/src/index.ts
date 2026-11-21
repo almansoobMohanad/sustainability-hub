@@ -3,22 +3,45 @@ import { createDb, loadFactorLibrary, runMigrations } from '@hub/db'
 import { createApp } from './app'
 import { createAuth } from './auth/auth'
 import { createSmtpMailer } from './email/mailer'
-import { env, googleOAuth } from './env'
+import { databaseConfigProblem, databaseLabel, describeDatabase, readCaCertificate, unreachableHint } from './database-config'
+import { env, googleOAuth, loadedEnvFiles } from './env'
 import { checkSectorTemplates } from './factors/sector-templates'
 import { waitForDatabase } from './wait-for-database'
 
 /*
   API entry point. Startup order:
-    1. read + validate configuration (env.ts, on import)
+    1. read + validate configuration (env.ts, on import); say which database it is
     2. wait until Postgres answers
     3. apply new database migrations (no manual setup steps, ever)
     4. load the emission factor library (only years that are new or changed)
     5. start listening for requests
 */
 
-const { db, pool } = createDb(env.DATABASE_URL)
+// Which database, said plainly (local Docker or Supabase), so data never goes to the wrong one by surprise
+const target = describeDatabase(env.DATABASE_URL)
+let caCertificate: string | undefined
+try {
+  caCertificate = readCaCertificate(env.DATABASE_CA_CERT)
+} catch (error) {
+  console.error(`Invalid API configuration: ${(error as Error).message}`)
+  process.exit(1)
+}
+const problem = databaseConfigProblem(target, { hasCaCertificate: Boolean(caCertificate) })
+if (problem) {
+  console.error(`Invalid API configuration: ${problem}`)
+  process.exit(1)
+}
+console.log(
+  `Database: ${databaseLabel(target)}${caCertificate ? ', SSL with certificate check' : ''}` +
+    (loadedEnvFiles.length ? `  [settings: ${loadedEnvFiles.join(' + ')}]` : ''),
+)
 
-await waitForDatabase(pool, { timeoutMs: env.NODE_ENV === 'production' ? 60_000 : Infinity })
+const { db, pool } = createDb(env.DATABASE_URL, { caCertificate, maxConnections: env.DATABASE_POOL_MAX })
+
+await waitForDatabase(pool, {
+  timeoutMs: env.NODE_ENV === 'production' ? 60_000 : Infinity,
+  hint: unreachableHint(target),
+})
 
 const migrations = await runMigrations(db)
 console.log(migrations.applied ? 'Database migrations are up to date.' : 'No database migrations yet.')
