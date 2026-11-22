@@ -1,0 +1,26 @@
+# What the Docker build may see: an ALLOW-list, so secrets (.env files,
+# certificates), local data and build leftovers can never end up in an image.
+*
+
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!scripts/
+!apps/api/
+!apps/app/
+!packages/
+# The website isn't in the image, but pnpm needs its package.json to match the lockfile
+!apps/site/package.json
+
+# ...and never these, even inside the folders above
+**/node_modules
+**/dist
+**/.turbo
+**/.tanstack
+**/.env
+**/.env.*
+**/*.crt
+**/*.pem
+**/*.tsbuildinfo
+**/*.log
+apps/api/test
