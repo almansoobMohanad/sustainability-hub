@@ -1,0 +1,51 @@
+# Render Blueprint: the hosted app (https://render.com/docs/blueprint-spec).
+# Render reads this file when you create the service with New > Blueprint, and
+# keeps the service in line with it afterwards. Secrets are NOT in this file:
+# entries with `sync: false` are asked for once in the Render dashboard.
+services:
+  - type: web
+    name: sustainability-hub
+    runtime: docker # builds ./Dockerfile: the API serving the app and /api on one port
+    dockerfilePath: ./Dockerfile
+    region: singapore # next to the Supabase database (can't be changed later)
+    plan: starter # always on; the free plan sleeps after 15 minutes without visitors
+    branch: main
+    # Deploy a new commit on main only after GitHub's checks (CI) passed for it
+    autoDeployTrigger: checksPass
+    # A new version gets traffic only once this answers 200 (it checks the
+    # database too); if it never does, the previous version keeps running
+    healthCheckPath: /api/health
+    # Changes to only these don't need a new version of the app
+    buildFilter:
+      ignoredPaths:
+        - apps/site/**
+        - "**/*.md"
+    envVars:
+      # The hosted database (the PRODUCTION Supabase project's "Session pooler" string)
+      - key: DATABASE_URL
+        sync: false
+      # Supabase's CA certificate: paste the whole file's text (-----BEGIN CERTIFICATE----- ...)
+      - key: DATABASE_CA_CERT
+        sync: false
+      - key: DATABASE_POOL_MAX
+        value: "5"
+      # The address people open, e.g. https://sustainability-hub.onrender.com (no slash at the end)
+      - key: APP_URL
+        sync: false
+      # Signs session cookies; Render generates a random one
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      # Email (Resend, Brevo, ...): smtps://user:password@host:465
+      - key: SMTP_URL
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      # Render's edge (Cloudflare) puts the visitor's real address in this header,
+      # overwriting anything the visitor sent: used for rate limits
+      - key: CLIENT_IP_HEADER
+        value: cf-connecting-ip
+      # Optional: "Continue with Google" (set both, or leave both empty)
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false

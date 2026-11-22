@@ -89,6 +89,20 @@ const EnvSchema = z.object({
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(isProduction ? 0 : 1),
 
   /**
+   * Instead of counting proxies: a header the hosting platform's edge always
+   * sets to the real client address, overwriting what the client sent, e.g.
+   * cf-connecting-ip on Render (Cloudflare). Takes priority over TRUST_PROXY_HOPS.
+   */
+  CLIENT_IP_HEADER: z.string().trim().toLowerCase().optional().transform((value) => value || undefined),
+
+  /**
+   * The built app (apps/app/dist) to serve from this server, so one address
+   * holds the app and /api (Docker image: /app/public). Unset in development,
+   * where the app's own Vite server runs.
+   */
+  APP_FILES_DIR: z.string().trim().optional().transform((value) => value || undefined),
+
+  /**
    * Reject passwords found in known data breaches (Have I Been Pwned). Needs
    * internet access; offline installs can turn it off.
    */

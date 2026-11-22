@@ -1,5 +1,5 @@
 # Runs on every pull request (and on main after a merge). A PR should only be
-# merged when both jobs are green.
+# merged when all three jobs are green (Render deploys main only then too).
 name: CI
 
 on:
@@ -83,3 +83,51 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+
+  image:
+    name: Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The image Render deploys, built and started exactly like in production
+    # (NODE_ENV=production, the app served by the API) on an empty database.
+    # If it doesn't build, start, migrate or serve the app, this job fails, and
+    # Render (autoDeployTrigger: checksPass) never deploys that commit.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: hub
+          POSTGRES_PASSWORD: hub
+          POSTGRES_DB: sustainability_hub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hub -d sustainability_hub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the image
+        run: docker build --tag sustainability-hub:ci .
+
+      - name: Start it with production settings
+        # Throwaway values for this test only. --network host: the container
+        # reaches the Postgres service at 127.0.0.1:5432.
+        run: |
+          docker run --detach --name hub --network host \
+            --env PORT=3000 \
+            --env DATABASE_URL=postgres://hub:hub@127.0.0.1:5432/sustainability_hub \
+            --env APP_URL=http://127.0.0.1:3000 \
+            --env BETTER_AUTH_SECRET=ci-only-secret-not-used-anywhere-else-0123456789 \
+            --env SMTP_URL=smtp://127.0.0.1:1025 \
+            --env CHECK_BREACHED_PASSWORDS=false \
+            sustainability-hub:ci
+
+      - name: Smoke test
+        run: node scripts/smoke-test.mjs http://127.0.0.1:3000 --wait 120
+
+      - name: Server log
+        if: always()
+        run: docker logs hub

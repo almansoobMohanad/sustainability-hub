@@ -12,15 +12,22 @@ import type { MiddlewareHandler } from 'hono'
   - N trusted proxies: each proxy appends the address it received the request
     from, so the client is the Nth address counting from the RIGHT. Anything
     further left was written by the client and is ignored.
+  - a named header (CLIENT_IP_HEADER), for platforms whose edge always
+    OVERWRITES that header with the real address, e.g. Cloudflare's
+    cf-connecting-ip in front of Render. Only safe when nobody can reach the API
+    without passing that edge.
 */
 
 export const CLIENT_IP_HEADER = 'x-hub-client-ip'
 
-export function clientIp({ trustedProxyHops }: { trustedProxyHops: number }): MiddlewareHandler {
+export function clientIp({ trustedProxyHops, header }: { trustedProxyHops: number; header?: string }): MiddlewareHandler {
   return async (c, next) => {
     let ip = getConnInfo(c).remote.address
 
-    if (trustedProxyHops > 0) {
+    if (header) {
+      const fromEdge = c.req.header(header)?.split(',')[0]?.trim()
+      if (fromEdge) ip = fromEdge
+    } else if (trustedProxyHops > 0) {
       const chain = (c.req.header('x-forwarded-for') ?? '')
         .split(',')
         .map((part) => part.trim())

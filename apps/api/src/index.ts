@@ -70,10 +70,24 @@ const auth = createAuth({
 })
 console.log(googleOAuth ? 'Google sign-in: on.' : 'Google sign-in: off (no GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).')
 
-const app = createApp({ db, auth, trustedProxyHops: env.TRUST_PROXY_HOPS, googleSignIn: Boolean(googleOAuth) })
+let app: ReturnType<typeof createApp>
+try {
+  app = createApp({
+    db,
+    auth,
+    trustedProxyHops: env.TRUST_PROXY_HOPS,
+    clientIpHeader: env.CLIENT_IP_HEADER,
+    appFiles: env.APP_FILES_DIR ? { dir: env.APP_FILES_DIR, appUrl: env.APP_URL } : undefined,
+    googleSignIn: Boolean(googleOAuth),
+  })
+} catch (error) {
+  console.error(`Invalid API configuration: ${(error as Error).message}`)
+  process.exit(1)
+}
+if (env.APP_FILES_DIR) console.log(`Serving the app from ${env.APP_FILES_DIR}`)
 
 const server = serve({ fetch: app.fetch, hostname: env.HOST, port: env.PORT }, (info) => {
-  console.log(`API listening on http://${info.address}:${info.port}  (docs: /api/docs)`)
+  console.log(`API listening on http://${info.address}:${info.port}  (docs: /api/docs)${env.APP_FILES_DIR ? ', app: /' : ''}`)
 })
 
 // Stop cleanly (Ctrl+C, Docker/ECS stop, tsx restarting on a file change):

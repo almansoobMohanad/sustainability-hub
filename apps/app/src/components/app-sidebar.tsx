@@ -245,13 +245,15 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
                   <span className="block truncate text-xs text-muted-foreground">{user.email}</span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  {/* The public website (apps/site); address set in lib/site-links.ts */}
-                  <a href={SITE_URL}>
-                    <Globe aria-hidden />
-                    Back to website
-                  </a>
-                </DropdownMenuItem>
+                {/* The public website (apps/site), when there is one; address set in lib/site-links.ts */}
+                {SITE_URL && (
+                  <DropdownMenuItem asChild>
+                    <a href={SITE_URL}>
+                      <Globe aria-hidden />
+                      Back to website
+                    </a>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onSelect={signOut} disabled={signingOut}>
                   <LogOut aria-hidden />
                   {signingOut ? 'Signing out...' : 'Sign out'}

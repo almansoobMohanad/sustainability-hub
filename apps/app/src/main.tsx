@@ -2,8 +2,30 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { z } from 'zod'
 import { routeTree } from './routeTree.gen'
 import './index.css'
+
+// Zod speeds up validation by generating code with `new Function`, which the
+// server's Content-Security-Policy forbids (no eval). Use the plain version.
+z.config({ jitless: true })
+
+// After a new version is deployed, a page that's still open asks for code files
+// of the OLD version, which no longer exist. Load the new version instead (at
+// most once every 10 seconds, so a real outage can't cause a reload loop).
+window.addEventListener('vite:preloadError', (event) => {
+  const RELOADED_AT = 'hub.reloadedForNewVersion'
+  let last = 0
+  try {
+    last = Number(sessionStorage.getItem(RELOADED_AT) ?? 0)
+    sessionStorage.setItem(RELOADED_AT, String(Date.now()))
+  } catch {
+    // storage blocked: still reload (the time check is only a safety net)
+  }
+  if (Date.now() - last < 10_000) return // let the router show its error screen
+  event.preventDefault()
+  window.location.reload()
+})
 
 // Server-state cache (TanStack Query): fetching, caching and refreshing data
 const queryClient = new QueryClient({
