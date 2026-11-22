@@ -15,6 +15,7 @@
 # ...and never these, even inside the folders above
 **/node_modules
 **/dist
+**/dist-vercel
 **/.turbo
 **/.tanstack
 **/.env

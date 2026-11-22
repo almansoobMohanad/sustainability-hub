@@ -7,6 +7,7 @@ import { requestId } from 'hono/request-id'
 import { secureHeaders } from 'hono/secure-headers'
 import type { Database } from '@hub/db'
 import { appContentSecurityPolicy, serveAppFiles } from './app-files'
+import { SECURE_HEADERS } from './security-headers'
 import type { Auth } from './auth/auth'
 import { clientIp } from './auth/client-ip'
 import { authOptionsRoutes } from './routes/auth-options'
@@ -70,16 +71,7 @@ export function createApp({
   const root = new Hono()
   root.use(requestId()) // X-Request-Id header, handy for matching logs to requests
   if (logRequests) root.use(logger((line, ...rest) => console.log(redactSecrets(line), ...rest)))
-  root.use(
-    secureHeaders({
-      // Safe defaults (nosniff, frame protection, HTTPS-only once seen over https, ...), except:
-      // "no-referrer" would make browsers send `Origin: null` on the app's own POSTs, which
-      // Better Auth's origin check (rightly) refuses. same-origin: full referrer to ourselves,
-      // nothing to other sites.
-      referrerPolicy: 'same-origin',
-      permissionsPolicy: { camera: [], microphone: [], geolocation: [], payment: [], usb: [] },
-    }),
-  )
+  root.use(secureHeaders(SECURE_HEADERS))
 
   const app = new OpenAPIHono().basePath('/api')
 

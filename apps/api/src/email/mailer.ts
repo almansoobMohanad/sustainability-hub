@@ -29,6 +29,23 @@ export function createSmtpMailer({ url, from }: { url: string; from: string }): 
 }
 
 /**
+ * For hosts that may stop the process as soon as a request has been answered
+ * (Vercel functions): every email being sent is handed to `keepAlive` (Vercel's
+ * waitUntil), which keeps the function running until it's sent. A long-running
+ * server doesn't need this.
+ */
+export function keepAliveWhileSending(mailer: Mailer, keepAlive: (task: Promise<unknown>) => void): Mailer {
+  return {
+    send(email) {
+      const sending = mailer.send(email)
+      // The caller handles failures (sendInBackground logs them); this copy only waits
+      keepAlive(sending.catch(() => {}))
+      return sending
+    },
+  }
+}
+
+/**
  * Send without making the caller wait. Auth endpoints must answer just as fast
  * whether or not an email was sent, otherwise response times would reveal
  * which email addresses have accounts. Failures are logged, never shown to users.

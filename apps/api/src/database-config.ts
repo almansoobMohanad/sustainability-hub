@@ -7,9 +7,14 @@ import { resolve } from 'node:path'
   connecting:
   - Supabase without its CA certificate: either unencrypted over the internet,
     or failing with "self-signed certificate in certificate chain".
-  - Supabase's transaction pooler (port 6543): it hands the connection to
-    someone else after every transaction, which breaks session state; a server
-    that stays running should use the session pooler (port 5432).
+  - Supabase's transaction pooler (port 6543) for a server that stays running
+    or for migrations: it hands the connection to someone else after every
+    transaction, which breaks session state (migrations, the factor library's
+    one-time load). Those use the session pooler (port 5432).
+    Short-lived functions (Vercel) are the exception: they SHOULD use the
+    transaction pooler, which shares a few database connections between many
+    function instances; every request's queries are single statements or
+    transactions, which it handles fine.
 */
 
 export type DatabaseTarget = {
@@ -45,9 +50,12 @@ export function databaseLabel(target: DatabaseTarget) {
 }
 
 /** A setting that must be fixed before starting, or null */
-export function databaseConfigProblem(target: DatabaseTarget, { hasCaCertificate }: { hasCaCertificate: boolean }) {
+export function databaseConfigProblem(
+  target: DatabaseTarget,
+  { hasCaCertificate, serverless = false }: { hasCaCertificate: boolean; serverless?: boolean },
+) {
   if (target.kind !== 'supabase') return null
-  if (target.supabaseConnection === 'transaction pooler') {
+  if (target.supabaseConnection === 'transaction pooler' && !serverless) {
     return (
       'DATABASE_URL uses Supabase\'s transaction pooler (port 6543). Use the "Session pooler" connection ' +
       'string instead (port 5432): Supabase dashboard > Connect.'
