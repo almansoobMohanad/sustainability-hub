@@ -40,6 +40,12 @@ describe('databaseConfigProblem', () => {
     expect(databaseConfigProblem(describeDatabase(DIRECT), { hasCaCertificate: true })).toBeNull()
   })
 
+  test('short-lived functions (Vercel) may use the transaction pooler, still with the certificate', () => {
+    const serverless = { hasCaCertificate: true, serverless: true }
+    expect(databaseConfigProblem(describeDatabase(TRANSACTION), serverless)).toBeNull()
+    expect(databaseConfigProblem(describeDatabase(TRANSACTION), { ...serverless, hasCaCertificate: false })).toMatch(/DATABASE_CA_CERT/)
+  })
+
   test('the local database needs neither', () => {
     expect(databaseConfigProblem(describeDatabase(LOCAL), { hasCaCertificate: false })).toBeNull()
   })
