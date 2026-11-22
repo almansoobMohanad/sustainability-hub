@@ -46,10 +46,16 @@ try {
   console.log(`${'First connection'.padEnd(34)} ${(performance.now() - connectStarted).toFixed(1)} ms`)
 
   const roundTrip = summary('Round trip (select 1), 20x', await sequence(20, () => time('select 1')))
-  summary(
-    'Library search (indexed), 10x',
-    await sequence(10, () => time("select count(*) from emission_sources where search_text like '%diesel%'")),
-  )
+  // A new database has no tables until the API has started once (it runs the migrations then)
+  const { rows } = await pool.query<{ ready: boolean }>("select to_regclass('public.emission_sources') is not null as ready")
+  if (rows[0]?.ready) {
+    summary(
+      'Library search (indexed), 10x',
+      await sequence(10, () => time("select count(*) from emission_sources where search_text like '%diesel%'")),
+    )
+  } else {
+    console.log(`${'Library search'.padEnd(34)} skipped: no tables yet (start the API once to create them)`)
+  }
   console.log(
     `\nA request with 4 queries in a row waits about ${(roundTrip * 4).toFixed(0)} ms for the database from here.`,
   )
