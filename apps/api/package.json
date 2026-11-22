@@ -5,12 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/index.ts",
+    "dev:supabase": "node ../../scripts/with-env-file.mjs .env.supabase tsx watch --clear-screen=false src/index.ts",
     "build": "tsdown",
     "start": "node dist/index.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "auth:schema": "auth generate --config src/auth/cli-config.ts --output ../../packages/db/src/schema/auth.ts --yes && node scripts/finish-auth-schema.mjs"
+    "auth:schema": "auth generate --config src/auth/cli-config.ts --output ../../packages/db/src/schema/auth.ts --yes && node scripts/finish-auth-schema.mjs",
+    "db:latency": "tsx src/tools/db-latency.ts",
+    "db:latency:supabase": "node ../../scripts/with-env-file.mjs .env.supabase tsx src/tools/db-latency.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.8",

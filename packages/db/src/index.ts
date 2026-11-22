@@ -1,4 +1,4 @@
-export { createDb, type Database, type DatabasePool } from './client'
+export { createDb, type Database, type DatabaseOptions, type DatabasePool } from './client'
 export { DEV_DATABASE_URL } from './dev-database-url'
 export { loadFactorLibrary, UK_FACTOR_LIBRARY, type FactorLibraryResult } from './factor-library'
 export { runMigrations } from './migrate'

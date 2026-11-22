@@ -6,7 +6,7 @@ import type { DatabasePool } from '@hub/db'
   - development: wait as long as it takes (start Docker and the API carries on)
   - production: give up after `timeoutMs` so the platform restarts the container
 */
-export async function waitForDatabase(pool: DatabasePool, { timeoutMs }: { timeoutMs: number }) {
+export async function waitForDatabase(pool: DatabasePool, { timeoutMs, hint }: { timeoutMs: number; hint: string }) {
   const started = Date.now()
   let warned = false
   for (;;) {
@@ -20,7 +20,7 @@ export async function waitForDatabase(pool: DatabasePool, { timeoutMs }: { timeo
         warned = true
         console.warn(
           `Can't reach Postgres (${(error as Error).message || 'connection refused'}).\n` +
-            'Is it running? Start it with:  pnpm db:up   (Docker Desktop must be open)\n' +
+            `${hint}\n` +
             'Waiting for the database...',
         )
       }

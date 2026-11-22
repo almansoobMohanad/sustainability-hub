@@ -22,7 +22,12 @@ logs/
 .env
 .env.*
 !.env.example
+!.env.supabase.example
 *.local
+
+# Database certificates (downloaded per project, e.g. Supabase's CA)
+*.crt
+*.pem
 
 # Local notes for AI coding agents (kept on this machine only, never pushed)
 AGENTS.md
