@@ -50,6 +50,13 @@
       "when": 1795702239120,
       "tag": "0006_sedg_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795707249040,
+      "tag": "0007_esg_ready_reports",
+      "breakpoints": true
     }
   ]
 }

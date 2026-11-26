@@ -59,3 +59,45 @@ export const sedgReportEdits = pgTable(
     index('sedg_report_edits_report_idx').on(table.reportId, table.endedAt.desc(), table.id.desc()),
   ],
 )
+
+/*
+  ESG Ready (MITI's ESG readiness self-assessment), one per company per
+  calendar year. The questions are in @hub/shared/esg-ready; `answers` holds
+  what people chose ({ [fieldKey]: optionId | optionIds[] | text }). The score
+  is worked out from the answers, never stored.
+*/
+export const esgReadyReports = pgTable(
+  'esg_ready_reports',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    organizationId: uuid()
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    year: smallint().notNull(),
+    answers: jsonb().$type<Record<string, string | string[]>>().notNull().default({}),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+    updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    uniqueIndex('esg_ready_reports_company_year_unique').on(table.organizationId, table.year),
+    check('esg_ready_reports_year_check', sql`${table.year} between 1990 and 2100`),
+  ],
+)
+
+/** Its history, merged per person like sedgReportEdits; `changed` holds question numbers ("Q8") */
+export const esgReadyReportEdits = pgTable(
+  'esg_ready_report_edits',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    reportId: uuid()
+      .notNull()
+      .references(() => esgReadyReports.id, { onDelete: 'cascade' }),
+    actorId: uuid().references(() => users.id, { onDelete: 'set null' }),
+    startedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    changed: text().array().notNull(),
+  },
+  (table) => [index('esg_ready_report_edits_report_idx').on(table.reportId, table.endedAt.desc(), table.id.desc())],
+)
