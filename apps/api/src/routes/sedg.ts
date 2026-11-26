@@ -1,5 +1,5 @@
 import { createRoute, z } from '@hono/zod-openapi'
-import { and, desc, eq, sql, type Database } from '@hub/db'
+import { and, eq, sql, type Database } from '@hub/db'
 import { companySettings, emissionEntries, organizations, sedgReportEdits, sedgReports, users } from '@hub/db/schema'
 import { can } from '@hub/shared/permissions'
 import {
@@ -14,8 +14,10 @@ import {
 import type { Auth } from '../auth/auth'
 import { requireCompany, type CompanyVariables } from '../auth/require-company'
 import { requireSession } from '../auth/require-session'
+import { listEdits, recordEdit, textArray } from '../reports/report-history'
 import { intensityFigure, sedgFigures, type Figures } from '../reports/sedg-figures'
 import { createRouter, currentYear, errorResponse, forbidden } from './common'
+import { PersonSchema, historyRoute, invalid, yearParam } from './report-common'
 
 /*
   The SEDG disclosure report of the active company, one per calendar year.
@@ -28,18 +30,13 @@ import { createRouter, currentYear, errorResponse, forbidden } from './common'
   A year without a saved report reads as an empty one; the first change creates it.
   Saving is one upsert that MERGES the sent fields into the stored answers
   (two people editing different fields never overwrite each other) plus one
-  history write that extends the person's last edit when it's recent (see
-  sedgReportEdits in packages/db/src/schema/reports.ts).
+  history write that extends the person's last edit when it's recent
+  (reports/report-history.ts).
 */
-
-const EDIT_MERGE_MINUTES = 15
-const HISTORY_PAGE = 20
 
 const ValueSchema = z.union([z.string(), z.number()])
 
 const FigureSchema = z.object({ value: ValueSchema, note: z.string() })
-
-const PersonSchema = z.object({ id: z.string(), name: z.string() }).nullable()
 
 const ReportSchema = z
   .object({
@@ -61,25 +58,6 @@ const ReportSchema = z
 const SavedSchema = z
   .object({ updatedAt: z.string(), updatedBy: PersonSchema, level: z.enum(SEDG_LEVELS) })
   .openapi('SedgSaved')
-
-const EditSchema = z
-  .object({
-    id: z.string(),
-    actor: PersonSchema,
-    startedAt: z.string(),
-    endedAt: z.string(),
-    /** Disclosure codes ("E2.1"), "General" or "Level" */
-    changed: z.array(z.string()),
-  })
-  .openapi('SedgEdit')
-
-const yearParam = z.object({
-  year: z.coerce
-    .number()
-    .int()
-    .min(1990)
-    .openapi({ param: { name: 'year', in: 'path' }, example: 2025 }),
-})
 
 const getRoute = createRoute({
   method: 'get',
@@ -123,47 +101,6 @@ const patchRoute = createRoute({
     403: errorResponse('Not allowed'),
   },
 })
-
-const historyRoute = createRoute({
-  method: 'get',
-  path: '/v1/reports/sedg/{year}/history',
-  tags: ['Reports'],
-  summary: 'Who edited the SEDG report of a year, and what (Admin, Manager)',
-  request: {
-    params: yearParam,
-    query: z.object({ cursor: z.string().max(200).optional() }),
-  },
-  responses: {
-    200: {
-      description: 'Newest first, 20 per page',
-      content: {
-        'application/json': { schema: z.object({ items: z.array(EditSchema), nextCursor: z.string().nullable() }) },
-      },
-    },
-    400: errorResponse('Invalid request'),
-    401: errorResponse('Not signed in'),
-    403: errorResponse('Not allowed'),
-  },
-})
-
-/** Keyset cursor for the history: [ended_at as text (microseconds), id] */
-const encodeCursor = (endedAt: string, id: string) => Buffer.from(JSON.stringify([endedAt, id])).toString('base64url')
-function decodeCursor(cursor: string): [string, string] | null {
-  try {
-    const value = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'))
-    return Array.isArray(value) && value.length === 2 && value.every((part) => typeof part === 'string')
-      ? (value as [string, string])
-      : null
-  } catch {
-    return null
-  }
-}
-
-const invalid = (message: string) => ({ error: { code: 'invalid_request', message } })
-
-/** A text[] from ONE jsonb parameter (a JS array in a sql`` template would become one parameter per element) */
-const textArray = (items: string[]) =>
-  sql`array(select jsonb_array_elements_text(${JSON.stringify(items)}::jsonb))::text[]`
 
 export function sedgRoutes({ db, auth }: { db: Database; auth: Auth }) {
   const app = createRouter<{ Variables: CompanyVariables }>()
@@ -286,21 +223,7 @@ export function sedgRoutes({ db, auth }: { db: Database; auth: Auth }) {
         })
         .returning({ id: sedgReports.id, level: sedgReports.level, updatedAt: sedgReports.updatedAt })
 
-      // History: extend this person's edit if it ended less than 15 minutes ago, else start a new one
-      const extended = await tx.execute(sql`
-        update ${sedgReportEdits} set
-          ended_at = now(),
-          changed = array(select distinct unnest(${sedgReportEdits.changed} || ${textArray(changed)}) order by 1)
-        where ${sedgReportEdits.id} = (
-          select id from ${sedgReportEdits}
-           where ${sedgReportEdits.reportId} = ${report!.id} and ${sedgReportEdits.actorId} = ${userId}
-             and ${sedgReportEdits.endedAt} > now() - make_interval(mins => ${EDIT_MERGE_MINUTES})
-           order by ${sedgReportEdits.endedAt} desc limit 1
-        )
-      `)
-      if (extended.rowCount === 0) {
-        await tx.insert(sedgReportEdits).values({ reportId: report!.id, actorId: userId, changed: [...changed].sort() })
-      }
+      await recordEdit(tx, sedgReportEdits, { reportId: report!.id, actorId: userId, changed })
       return report!
     })
 
@@ -314,50 +237,14 @@ export function sedgRoutes({ db, auth }: { db: Database; auth: Auth }) {
     )
   })
 
-  app.openapi(historyRoute, async (c) => {
+  app.openapi(historyRoute('/v1/reports/sedg', 'SEDG report'), async (c) => {
     const { year } = c.req.valid('param')
-    const { cursor } = c.req.valid('query')
-    const after = cursor ? decodeCursor(cursor) : null
-    if (cursor && !after) return c.json(invalid('Invalid cursor.'), 400)
-
-    const rows = await db
-      .select({
-        id: sedgReportEdits.id,
-        startedAt: sedgReportEdits.startedAt,
-        endedAt: sedgReportEdits.endedAt,
-        endedAtText: sql<string>`${sedgReportEdits.endedAt}::text`,
-        changed: sedgReportEdits.changed,
-        actorId: users.id,
-        actorName: users.name,
-      })
-      .from(sedgReportEdits)
-      .innerJoin(sedgReports, eq(sedgReports.id, sedgReportEdits.reportId))
-      .leftJoin(users, eq(users.id, sedgReportEdits.actorId))
-      .where(
-        and(
-          eq(sedgReports.organizationId, c.var.company.id),
-          eq(sedgReports.year, year),
-          after ? sql`(${sedgReportEdits.endedAt}, ${sedgReportEdits.id}) < (${after[0]}::timestamptz, ${after[1]}::uuid)` : undefined,
-        ),
-      )
-      .orderBy(desc(sedgReportEdits.endedAt), desc(sedgReportEdits.id))
-      .limit(HISTORY_PAGE + 1)
-
-    const page = rows.slice(0, HISTORY_PAGE)
-    const last = page.at(-1)
-    return c.json(
-      {
-        items: page.map((row) => ({
-          id: row.id,
-          actor: row.actorId ? { id: row.actorId, name: row.actorName ?? '' } : null,
-          startedAt: row.startedAt.toISOString(),
-          endedAt: row.endedAt.toISOString(),
-          changed: row.changed,
-        })),
-        nextCursor: rows.length > HISTORY_PAGE && last ? encodeCursor(last.endedAtText, last.id) : null,
-      },
-      200,
+    const page = await listEdits(
+      db,
+      { reports: sedgReports, edits: sedgReportEdits },
+      { companyId: c.var.company.id, year, cursor: c.req.valid('query').cursor },
     )
+    return page ? c.json(page, 200) : c.json(invalid('Invalid cursor.'), 400)
   })
 
   return app
