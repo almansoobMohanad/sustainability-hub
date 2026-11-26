@@ -1,5 +1,6 @@
 import type { LinkProps } from '@tanstack/react-router'
-import { Building2, CirclePlus, LayoutDashboard, ListChecks, Rows3, Users, type LucideIcon } from 'lucide-react'
+import { Building2, CirclePlus, FileText, LayoutDashboard, ListChecks, Rows3, Users, type LucideIcon } from 'lucide-react'
+import type { Resource } from '@hub/shared/permissions'
 
 /*
   The app's navigation: the pages shown in the sidebar, grouped.
@@ -13,6 +14,8 @@ export type AppNavItem = {
   icon: LucideIcon
   /** A live count next to the label (only shown when above 0) */
   badge?: 'pending-entries'
+  /** Only shown to roles with this permission (e.g. Members don't see reports at all) */
+  permission?: { resource: Resource; action: string }
 }
 
 export type AppNavGroup = {
@@ -30,6 +33,17 @@ export const appNav: AppNavGroup[] = [
     items: [
       { label: 'Add emissions', to: '/emissions/new', icon: CirclePlus },
       { label: 'Entries', to: '/emissions', icon: Rows3, badge: 'pending-entries' },
+    ],
+  },
+  {
+    label: 'Reports',
+    items: [
+      {
+        label: 'SEDG disclosure',
+        to: '/reports/sedg',
+        icon: FileText,
+        permission: { resource: 'reports', action: 'update' },
+      },
     ],
   },
   {

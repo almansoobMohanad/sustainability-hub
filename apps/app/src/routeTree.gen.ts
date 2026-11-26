@@ -21,6 +21,7 @@ import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AppEmissionsIndexRouteImport } from './routes/_app/emissions/index'
 import { Route as AppEmissionsNewRouteImport } from './routes/_app/emissions/new'
+import { Route as AppReportsSedgRouteImport } from './routes/_app/reports/sedg'
 import { Route as AppSettingsCompanyRouteImport } from './routes/_app/settings/company'
 import { Route as AppSettingsMembersRouteImport } from './routes/_app/settings/members'
 import { Route as AppSettingsSourcesRouteImport } from './routes/_app/settings/sources'
@@ -84,6 +85,11 @@ const AppEmissionsNewRoute = AppEmissionsNewRouteImport.update({
   path: '/emissions/new',
   getParentRoute: () => AppRoute,
 } as any)
+const AppReportsSedgRoute = AppReportsSedgRouteImport.update({
+  id: '/reports/sedg',
+  path: '/reports/sedg',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsCompanyRoute = AppSettingsCompanyRouteImport.update({
   id: '/settings/company',
   path: '/settings/company',
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/emissions/new': typeof AppEmissionsNewRoute
+  '/reports/sedg': typeof AppReportsSedgRoute
   '/settings/company': typeof AppSettingsCompanyRoute
   '/settings/members': typeof AppSettingsMembersRoute
   '/settings/sources': typeof AppSettingsSourcesRoute
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/emissions/new': typeof AppEmissionsNewRoute
+  '/reports/sedg': typeof AppReportsSedgRoute
   '/settings/company': typeof AppSettingsCompanyRoute
   '/settings/members': typeof AppSettingsMembersRoute
   '/settings/sources': typeof AppSettingsSourcesRoute
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_app/': typeof AppIndexRoute
   '/_app/emissions/new': typeof AppEmissionsNewRoute
+  '/_app/reports/sedg': typeof AppReportsSedgRoute
   '/_app/settings/company': typeof AppSettingsCompanyRoute
   '/_app/settings/members': typeof AppSettingsMembersRoute
   '/_app/settings/sources': typeof AppSettingsSourcesRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/emissions/new'
+    | '/reports/sedg'
     | '/settings/company'
     | '/settings/members'
     | '/settings/sources'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/emissions/new'
+    | '/reports/sedg'
     | '/settings/company'
     | '/settings/members'
     | '/settings/sources'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/_auth/sign-up'
     | '/_app/'
     | '/_app/emissions/new'
+    | '/_app/reports/sedg'
     | '/_app/settings/company'
     | '/_app/settings/members'
     | '/_app/settings/sources'
@@ -301,6 +313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmissionsNewRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/reports/sedg': {
+      id: '/_app/reports/sedg'
+      path: '/reports/sedg'
+      fullPath: '/reports/sedg'
+      preLoaderRoute: typeof AppReportsSedgRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/company': {
       id: '/_app/settings/company'
       path: '/settings/company'
@@ -335,6 +354,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppEmissionsNewRoute: typeof AppEmissionsNewRoute
+  AppReportsSedgRoute: typeof AppReportsSedgRoute
   AppSettingsCompanyRoute: typeof AppSettingsCompanyRoute
   AppSettingsMembersRoute: typeof AppSettingsMembersRoute
   AppSettingsSourcesRoute: typeof AppSettingsSourcesRoute
@@ -344,6 +364,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppEmissionsNewRoute: AppEmissionsNewRoute,
+  AppReportsSedgRoute: AppReportsSedgRoute,
   AppSettingsCompanyRoute: AppSettingsCompanyRoute,
   AppSettingsMembersRoute: AppSettingsMembersRoute,
   AppSettingsSourcesRoute: AppSettingsSourcesRoute,

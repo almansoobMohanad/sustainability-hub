@@ -65,6 +65,15 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
   const invitationSummary =
     invitations.length === 1 ? '1 pending invitation' : `${invitations.length} pending invitations`
   const [signingOut, setSigningOut] = useState(false)
+  // Pages the person's role may open (a group with none left is hidden)
+  const navGroups = appNav
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) => !item.permission || can(role, item.permission.resource, item.permission.action as never),
+      ),
+    }))
+    .filter((group) => group.items.length > 0)
 
   async function switchCompany(companyId: string) {
     if (companyId === company?.id) return
@@ -176,7 +185,7 @@ export function AppSidebar({ width, onWidthChange, onWidthCommit }: Props) {
       </SidebarHeader>
 
       <SidebarContent>
-        {appNav.map((group) => (
+        {navGroups.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             <SidebarGroupContent>

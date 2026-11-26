@@ -99,6 +99,8 @@ export type CompanySettings = {
   sector: Sector | null
   /** New entries start Pending and need a Manager/Admin to verify them (false: verified automatically) */
   requireVerification: boolean
+  /** The year reductions are measured against (SEDG); null until an Admin chooses one */
+  baselineYear: number | null
 }
 
 export const companySettingsQueryOptions = (companyId: string) =>
