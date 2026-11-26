@@ -16,6 +16,11 @@ build/
 .tanstack/
 coverage/
 
+# Browser tests (e2e/): saved sign-in, results, reports
+e2e/.auth/
+e2e/test-results/
+e2e/playwright-report/
+
 # Logs
 logs/
 *.log

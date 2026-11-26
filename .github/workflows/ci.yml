@@ -1,6 +1,9 @@
-# Runs on every pull request (and on main after a merge). A PR should only be
-# merged when all three jobs are green: Vercel deploys main as soon as it changes
-# (Render, if used, waits for these checks).
+# Runs on every pull request, and on main after a merge. On main, the last job
+# deploys to Vercel, but only when every check passed for that commit:
+#   checks + tests + Docker image and browser tests -> deploy
+# The deploy uploads the new version without making it live, tests it at its
+# own address, and only then switches the live site over (job "deploy").
+# Vercel's own Git deployments are off (vercel.json), so this is the only way in.
 name: CI
 
 on:
@@ -40,8 +43,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm build
 
-      # What Vercel builds (vercel.json): the API as a function plus the app, in
-      # Vercel's output format. Fails here, in the PR, instead of on Vercel after merging.
+      # What the deploy job uploads to Vercel: the API as a function plus the
+      # app, in Vercel's output format. Fails here, in the PR, instead of after merging.
       - name: Vercel build output
         run: |
           pnpm --filter @hub/api build:vercel
@@ -93,13 +96,14 @@ jobs:
       - run: pnpm test
 
   image:
-    name: Docker image
+    name: Docker image and browser tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    # The image Render deploys, built and started exactly like in production
-    # (NODE_ENV=production, the app served by the API) on an empty database.
-    # If it doesn't build, start, migrate or serve the app, this job fails, and
-    # Render (autoDeployTrigger: checksPass) never deploys that commit.
+    timeout-minutes: 25
+    # The production image (Docker, Render), built and started exactly like in
+    # production (NODE_ENV=production, the app served by the API) on an empty
+    # database. Then a real browser uses it like a person would (e2e/): sign-up
+    # with the verification email (caught by Mailpit), company, entries, import,
+    # sign-in. Browser errors and security-policy blocks fail the tests too.
     services:
       postgres:
         image: postgres:17-alpine
@@ -114,15 +118,25 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
+      mailpit:
+        image: axllent/mailpit:v1.33.1
+        ports:
+          - 1025:1025
+          - 8025:8025
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
 
       - name: Build the image
-        run: docker build --tag sustainability-hub:ci .
+        run: docker build --build-arg HUB_VERSION=${{ github.sha }} --tag sustainability-hub:ci .
 
       - name: Start it with production settings
         # Throwaway values for this test only. --network host: the container
-        # reaches the Postgres service at 127.0.0.1:5432.
+        # reaches the Postgres and Mailpit services at 127.0.0.1.
         run: |
           docker run --detach --name hub --network host \
             --env PORT=3000 \
@@ -134,8 +148,135 @@ jobs:
             sustainability-hub:ci
 
       - name: Smoke test
-        run: node scripts/smoke-test.mjs http://127.0.0.1:3000 --wait 120
+        run: node scripts/smoke-test.mjs http://127.0.0.1:3000 --wait 120 --expect-version ${{ github.sha }}
+
+      # Uses the runner's own Google Chrome: no browser download
+      - name: Browser tests
+        run: |
+          pnpm install --frozen-lockfile --filter @hub/e2e
+          pnpm --filter @hub/e2e e2e
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+          E2E_MAILPIT_URL: http://127.0.0.1:8025
+
+      # Screenshots, and a trace that replays each failed test step by step
+      # (download it, then `pnpm --filter @hub/e2e exec playwright show-trace <trace.zip>`)
+      - name: Keep the browser test report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-test-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 14
 
       - name: Server log
         if: always()
         run: docker logs hub
+
+  deploy:
+    name: Deploy to production
+    # Only for main, and only when every job above passed for this commit
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [checks, test, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # One deploy at a time, never cancelled half-way (a newer commit waits its turn)
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    # Repository settings (Settings > Secrets and variables > Actions). What each
+    # one is and where to find it: docs/deploying.md
+    env:
+      APP_URL: ${{ vars.APP_URL }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_TELEMETRY_DISABLED: 1
+      HUB_VERSION: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the deploy settings
+        env:
+          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+          DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          missing=""
+          for name in APP_URL VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_TOKEN MIGRATION_DATABASE_URL DATABASE_CA_CERT VERCEL_AUTOMATION_BYPASS_SECRET; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Not deployed: these repository settings are missing:$missing (see docs/deploying.md)"
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter "@hub/app..." --filter "@hub/api..."
+
+      # The same build as "Vercel build output" on a PR, now with the live site's
+      # APP_URL (security headers) and the commit id (reported by /api/health)
+      - name: Build
+        run: |
+          pnpm --filter @hub/app build
+          pnpm --filter @hub/api build:vercel
+          pnpm --filter @hub/api vercel:output
+
+      # Before the new version exists: if this fails, nothing else changes.
+      # Migrations must keep the version that is live now working (add columns
+      # and tables; rename or drop only in a later release).
+      - name: Update the database
+        env:
+          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+          DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
+        run: pnpm --filter @hub/api db:deploy
+
+      - name: Install the Vercel CLI
+        run: npm install --global vercel@66.6.0
+
+      # --prebuilt: upload what was built above (Vercel doesn't build anything).
+      # --prod --skip-domain: a production deployment (production settings and
+      # database) that the live address does NOT point to yet.
+      - name: Upload the new version (not live yet)
+        id: upload
+        run: |
+          # The CLI prints the new deployment's address as the last line of its output
+          url=$(vercel deploy --prebuilt --prod --skip-domain --yes --token "$VERCEL_TOKEN" | tail -n 1)
+          case "$url" in
+            https://*) echo "New version: $url" ;;
+            *) echo "::error::The Vercel CLI didn't print the new version's address (got: $url)"; exit 1 ;;
+          esac
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      # Its own address is behind Vercel's login; the bypass secret lets the test in
+      - name: Test the new version
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: node scripts/smoke-test.mjs "${{ steps.upload.outputs.url }}" --wait 120 --expect-version "$HUB_VERSION"
+
+      - name: Make it live
+        run: vercel promote "${{ steps.upload.outputs.url }}" --yes --timeout 5m --token "$VERCEL_TOKEN"
+
+      - name: Check the live site
+        run: node scripts/smoke-test.mjs "$APP_URL" --wait 180 --expect-version "$HUB_VERSION"
+
+      # A line on the run's summary page: deployed, not deployed, or live but failing
+      - name: Summary
+        if: always()
+        run: |
+          live=$(curl -s --max-time 10 "$APP_URL/api/health" | sed -n 's/.*"version":"\([0-9a-f]*\)".*/\1/p') || true
+          previous=${live:0:7}
+          previous=${previous:-the previous version}
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "Deployed: $APP_URL now runs ${HUB_VERSION:0:7}." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$live" = "$HUB_VERSION" ]; then
+            echo "**The live site already runs ${HUB_VERSION:0:7}, but a check failed.** If it is broken: Vercel > Deployments > the previous production deployment > Instant Rollback." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Not deployed: the live site still runs $previous. Nothing to undo; fix the problem and merge again." >> "$GITHUB_STEP_SUMMARY"
+          fi

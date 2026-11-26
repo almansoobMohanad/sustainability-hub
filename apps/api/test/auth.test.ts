@@ -13,6 +13,8 @@ describe('health', () => {
     const response = await new Person(api, uniqueEmail(), 'Anyone').get('/health')
     expect(response.status).toBe(200)
     expect(response.body.status).toBe('ok')
+    // No HUB_VERSION in tests (only builds write one into the bundle)
+    expect(response.body.version).toBeNull()
   })
 
   test('unknown endpoints answer with the JSON error shape', async () => {

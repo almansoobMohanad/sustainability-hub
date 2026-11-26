@@ -23,6 +23,8 @@ export default defineConfig({
     alwaysBundle: [/./], // bundle everything
     onlyBundle: false, // and don't print the list of bundled packages
   },
+  // The commit being built, for /api/health (src/version.ts): tsdown replaces process.env.HUB_VERSION in the code; empty = unknown
+  env: { HUB_VERSION: process.env.HUB_VERSION ?? '' },
   // (existsSync: tolerate a folder that doesn't exist yet)
   copy: [MIGRATIONS, SEED].filter((folder) => existsSync(folder)).map((folder) => ({ from: folder, to: 'dist' })),
 })
