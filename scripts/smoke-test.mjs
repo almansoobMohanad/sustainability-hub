@@ -29,18 +29,13 @@ const get = (path, headers = {}) =>
     signal: AbortSignal.timeout(15_000),
   })
 
-const failures = []
-const check = (ok, label) => {
-  console.log(`${ok ? 'ok  ' : 'FAIL'}  ${label}`)
-  if (!ok) failures.push(label)
-}
-
 // 1. Wait for the server (first start migrates and loads the factor library) and,
 //    if asked, for the expected version (a domain can take a moment to switch over)
 const started = Date.now()
+const deadline = started + waitSeconds * 1000
 let health
 let lastAnswer = 'no answer'
-while (Date.now() - started < waitSeconds * 1000) {
+while (Date.now() < deadline) {
   try {
     const response = await get('/api/health')
     lastAnswer = `HTTP ${response.status}`
@@ -54,43 +49,76 @@ while (Date.now() - started < waitSeconds * 1000) {
   }
   await new Promise((resolve) => setTimeout(resolve, 2000))
 }
-check(Boolean(health), `/api/health answers within ${waitSeconds} s (last: ${lastAnswer})`)
+const report = (ok, label) => console.log(`${ok ? 'ok  ' : 'FAIL'}  ${label}`)
+report(Boolean(health), `/api/health answers within ${waitSeconds} s (last: ${lastAnswer})`)
 if (!health) {
   if (lastAnswer === 'HTTP 401' && !bypass) console.error('401: this address is protected. Set VERCEL_AUTOMATION_BYPASS_SECRET.')
   process.exit(1)
 }
-if (expectedVersion) {
-  check(health.version === expectedVersion, `runs version ${expectedVersion} (found: ${health.version ?? 'none'})`)
+
+/*
+  2-4: the page, its code and the API, as one round of checks. Right after a
+  new version goes live, some of Vercel's edge servers can still hand out the
+  previous version's page for a few seconds (it refers to code files the new
+  version doesn't have), so a failed round is repeated every 5 seconds until
+  the time is up (at least 60 seconds after the version answered). A real
+  problem still fails, just a little later.
+*/
+async function checkRound() {
+  const results = []
+  const check = (ok, label) => results.push({ ok: Boolean(ok), label })
+
+  if (expectedVersion) {
+    const now = await (await get('/api/health')).json().catch(() => ({}))
+    check(now.version === expectedVersion, `runs version ${expectedVersion} (found: ${now.version ?? 'none'})`)
+  }
+  check(health.database === 'up', 'the database is up')
+
+  // The app's page, for the home page and a deep link
+  for (const path of ['/', '/emissions?year=2025']) {
+    const response = await get(path)
+    const html = await response.text()
+    check(response.ok && html.includes('<div id="root">'), `${path} is the app's page`)
+    check(response.headers.get('cache-control') === 'no-cache', `${path} is never cached`)
+    check((response.headers.get('content-security-policy') ?? '').includes("script-src 'self'"), `${path} has the security policy`)
+  }
+
+  // Its code: found, compressed, cached for a long time
+  const page = await (await get('/')).text()
+  const script = page.match(/\/assets\/[^"]+\.js/)?.[0]
+  check(Boolean(script), 'the page refers to its code file')
+  if (script) {
+    const response = await get(script, { 'accept-encoding': 'br, gzip' })
+    check(response.ok, `${script} is served`)
+    check((response.headers.get('cache-control') ?? '').includes('immutable'), `${script} is cached as immutable`)
+  }
+
+  // The API: JSON errors, security headers
+  const unknown = await get('/api/v1/no-such-endpoint')
+  check(unknown.status === 404 && (await unknown.json()).error?.code === 'not_found', 'unknown API addresses are JSON 404s')
+  const me = await get('/api/v1/me')
+  check(me.status === 401, '/api/v1/me needs a sign-in')
+  check(me.headers.get('x-content-type-options') === 'nosniff', 'security headers are set')
+  check((await get('/api/v1/auth-options')).ok, 'sign-in options answer')
+  return results
 }
-check(health.database === 'up', 'the database is up')
 
-// 2. The app's page, for the home page and a deep link
-for (const path of ['/', '/emissions?year=2025']) {
-  const response = await get(path)
-  const html = await response.text()
-  check(response.ok && html.includes('<div id="root">'), `${path} is the app's page`)
-  check(response.headers.get('cache-control') === 'no-cache', `${path} is never cached`)
-  check((response.headers.get('content-security-policy') ?? '').includes("script-src 'self'"), `${path} has the security policy`)
+const retryUntil = Math.max(deadline, Date.now() + 60_000)
+let results = []
+for (let round = 1; ; round += 1) {
+  try {
+    results = await checkRound()
+  } catch (error) {
+    results = [{ ok: false, label: `the checks could not run (${error.message})` }]
+  }
+  const failed = results.filter((result) => !result.ok)
+  if (failed.length === 0 || Date.now() + 5000 > retryUntil) break
+  console.log(`Round ${round}: ${failed.map((result) => result.label).join('; ')}. Trying again in 5 s...`)
+  await new Promise((resolve) => setTimeout(resolve, 5000))
 }
 
-// 3. Its code: found, compressed, cached for a long time
-const page = await (await get('/')).text()
-const script = page.match(/\/assets\/[^"]+\.js/)?.[0]
-check(Boolean(script), 'the page refers to its code file')
-if (script) {
-  const response = await get(script, { 'accept-encoding': 'br, gzip' })
-  check(response.ok, `${script} is served`)
-  check((response.headers.get('cache-control') ?? '').includes('immutable'), `${script} is cached as immutable`)
-}
-
-// 4. The API: JSON errors, security headers
-const unknown = await get('/api/v1/no-such-endpoint')
-check(unknown.status === 404 && (await unknown.json()).error?.code === 'not_found', 'unknown API addresses are JSON 404s')
-const me = await get('/api/v1/me')
-check(me.status === 401, '/api/v1/me needs a sign-in')
-check(me.headers.get('x-content-type-options') === 'nosniff', 'security headers are set')
-check((await get('/api/v1/auth-options')).ok, 'sign-in options answer')
-
+for (const result of results) report(result.ok, result.label)
+const failures = results.filter((result) => !result.ok)
 if (failures.length) {
   console.error(`\n${failures.length} check(s) failed at ${base}`)
   process.exit(1)
