@@ -1,6 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "e2e"
 
 # Dependencies allowed to run install scripts. pnpm blocks them by default (a
 # supply-chain protection); approve new ones with: pnpm approve-builds <name>
