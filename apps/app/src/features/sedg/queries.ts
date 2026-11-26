@@ -1,14 +1,13 @@
-import { infiniteQueryOptions, queryOptions, type QueryClient } from '@tanstack/react-query'
+import { queryOptions, type QueryClient } from '@tanstack/react-query'
 import type { SedgAnswers, SedgAutoFigure, SedgLevel, SedgValue } from '@hub/shared/sedg'
 import { api } from '@/lib/api'
+import { reportHistoryQueryOptions, type Person } from '../reports/queries'
 
 /*
   The SEDG report of one year (GET/PATCH /api/v1/reports/sedg/{year}) and its
   edit history. Saving is done by the page's autosave (use-autosave.ts), which
   updates this cache itself, so the form never jumps while someone types.
 */
-
-export type Person = { id: string; name: string } | null
 
 export type SedgFigure = { value: SedgValue; note: string }
 
@@ -27,8 +26,6 @@ export type SedgSaved = { updatedAt: string; updatedBy: Person; level: SedgLevel
 
 export type SedgChanges = { level?: SedgLevel; answers?: Record<string, SedgValue | null> }
 
-export type SedgEdit = { id: string; actor: Person; startedAt: string; endedAt: string; changed: string[] }
-
 const reportKey = (companyId: string, year: number) => ['company', companyId, 'sedg', year] as const
 
 export const sedgReportQueryOptions = (companyId: string, year: number) =>
@@ -40,16 +37,7 @@ export const sedgReportQueryOptions = (companyId: string, year: number) =>
   })
 
 export const sedgHistoryQueryOptions = (companyId: string, year: number) =>
-  infiniteQueryOptions({
-    queryKey: [...reportKey(companyId, year), 'history'],
-    queryFn: ({ pageParam, signal }) =>
-      api<{ items: SedgEdit[]; nextCursor: string | null }>(
-        `/reports/sedg/${year}/history${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ''}`,
-        { signal },
-      ),
-    initialPageParam: '',
-    getNextPageParam: (page) => page.nextCursor ?? undefined,
-  })
+  reportHistoryQueryOptions(reportKey(companyId, year), `/reports/sedg/${year}`)
 
 export const saveSedgChanges = (year: number, changes: SedgChanges, { keepalive = false } = {}) =>
   keepalive

@@ -21,6 +21,7 @@ import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AppEmissionsIndexRouteImport } from './routes/_app/emissions/index'
 import { Route as AppEmissionsNewRouteImport } from './routes/_app/emissions/new'
+import { Route as AppReportsEsgReadyRouteImport } from './routes/_app/reports/esg-ready'
 import { Route as AppReportsSedgRouteImport } from './routes/_app/reports/sedg'
 import { Route as AppSettingsCompanyRouteImport } from './routes/_app/settings/company'
 import { Route as AppSettingsMembersRouteImport } from './routes/_app/settings/members'
@@ -85,6 +86,11 @@ const AppEmissionsNewRoute = AppEmissionsNewRouteImport.update({
   path: '/emissions/new',
   getParentRoute: () => AppRoute,
 } as any)
+const AppReportsEsgReadyRoute = AppReportsEsgReadyRouteImport.update({
+  id: '/reports/esg-ready',
+  path: '/reports/esg-ready',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppReportsSedgRoute = AppReportsSedgRouteImport.update({
   id: '/reports/sedg',
   path: '/reports/sedg',
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/emissions/new': typeof AppEmissionsNewRoute
+  '/reports/esg-ready': typeof AppReportsEsgReadyRoute
   '/reports/sedg': typeof AppReportsSedgRoute
   '/settings/company': typeof AppSettingsCompanyRoute
   '/settings/members': typeof AppSettingsMembersRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
   '/emissions/new': typeof AppEmissionsNewRoute
+  '/reports/esg-ready': typeof AppReportsEsgReadyRoute
   '/reports/sedg': typeof AppReportsSedgRoute
   '/settings/company': typeof AppSettingsCompanyRoute
   '/settings/members': typeof AppSettingsMembersRoute
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_app/': typeof AppIndexRoute
   '/_app/emissions/new': typeof AppEmissionsNewRoute
+  '/_app/reports/esg-ready': typeof AppReportsEsgReadyRoute
   '/_app/reports/sedg': typeof AppReportsSedgRoute
   '/_app/settings/company': typeof AppSettingsCompanyRoute
   '/_app/settings/members': typeof AppSettingsMembersRoute
@@ -178,6 +187,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/emissions/new'
+    | '/reports/esg-ready'
     | '/reports/sedg'
     | '/settings/company'
     | '/settings/members'
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/emissions/new'
+    | '/reports/esg-ready'
     | '/reports/sedg'
     | '/settings/company'
     | '/settings/members'
@@ -214,6 +225,7 @@ export interface FileRouteTypes {
     | '/_auth/sign-up'
     | '/_app/'
     | '/_app/emissions/new'
+    | '/_app/reports/esg-ready'
     | '/_app/reports/sedg'
     | '/_app/settings/company'
     | '/_app/settings/members'
@@ -313,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmissionsNewRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/reports/esg-ready': {
+      id: '/_app/reports/esg-ready'
+      path: '/reports/esg-ready'
+      fullPath: '/reports/esg-ready'
+      preLoaderRoute: typeof AppReportsEsgReadyRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/reports/sedg': {
       id: '/_app/reports/sedg'
       path: '/reports/sedg'
@@ -354,6 +373,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppEmissionsNewRoute: typeof AppEmissionsNewRoute
+  AppReportsEsgReadyRoute: typeof AppReportsEsgReadyRoute
   AppReportsSedgRoute: typeof AppReportsSedgRoute
   AppSettingsCompanyRoute: typeof AppSettingsCompanyRoute
   AppSettingsMembersRoute: typeof AppSettingsMembersRoute
@@ -364,6 +384,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppEmissionsNewRoute: AppEmissionsNewRoute,
+  AppReportsEsgReadyRoute: AppReportsEsgReadyRoute,
   AppReportsSedgRoute: AppReportsSedgRoute,
   AppSettingsCompanyRoute: AppSettingsCompanyRoute,
   AppSettingsMembersRoute: AppSettingsMembersRoute,

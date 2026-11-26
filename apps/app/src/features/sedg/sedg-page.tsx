@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { AlertCircle, Check, CircleCheck, Download, ExternalLink, LoaderCircle } from 'lucide-react'
+import { CircleCheck, Download, ExternalLink, LoaderCircle } from 'lucide-react'
 import { Button } from '@hub/ui/components/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@hub/ui/components/select'
 import { Skeleton } from '@hub/ui/components/skeleton'
@@ -19,31 +19,43 @@ import {
   type SedgDisclosure,
   type SedgLevel,
   type SedgPillar,
+  type SedgValue,
 } from '@hub/shared/sedg'
 import { InfoTip } from '@/components/info-tip'
 import { PageHeader } from '@/components/page-header'
 import { PageBody, PageTitle } from '@/components/page-layout'
 import { useMe } from '@/features/company/me'
+import { HistorySheet } from '@/features/reports/history-sheet'
+import { SaveLine } from '@/features/reports/save-line'
+import { useAutosave, type Autosave, type ReportChanges } from '@/features/reports/use-autosave'
 import { errorMessage } from '@/lib/api'
-import { HistorySheet } from './history-sheet'
-import { sedgReportQueryOptions, type SedgReport } from './queries'
+import {
+  applyChanges,
+  refreshFigures,
+  saveSedgChanges,
+  sedgHistoryQueryOptions,
+  sedgReportQueryOptions,
+  type SedgChanges,
+  type SedgReport,
+  type SedgSaved,
+} from './queries'
 import { downloadSedgPdf, shownValue } from './report-values'
 import { SedgFieldInput } from './sedg-field'
 import { SEDG_COLORS } from './style'
-import { editedWhen } from './time'
-import { useAutosave, type SaveStatus } from './use-autosave'
 
 /*
   The SEDG disclosure (Admins and Managers): one report per calendar year.
   Layout (AGENTS.md "UI design"): left-aligned, flat sections, no cards. A
   jump list on the left (large screens) shows how complete each pillar is.
   Every disclosure is a row: code, level and (i) on the left, fields on the
-  right. Changes save themselves (use-autosave.ts); the line under the title
+  right. Changes save themselves (reports/use-autosave.ts); the line under the title
   says when, and by whom, the report was last edited. "Download PDF" builds
   the PDF in the browser.
 */
 
 const OFFICIAL_GUIDE = 'https://sedg.capitalmarketsmalaysia.com/'
+// Saving these changes another figure (the intensity, E1.7)
+const FIGURE_INPUTS = new Set(['gen_revenue', 'e1_1', 'e1_2'])
 
 export function SedgPage({ year }: { year: number }) {
   const { company } = useMe()
@@ -73,7 +85,23 @@ function ReportForm({ report, companyId }: { report: SedgReport; companyId: stri
   const { role } = useMe()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const autosave = useAutosave(companyId, report.year)
+  const year = report.year
+  const save = useCallback(
+    (changes: ReportChanges<SedgValue>, options?: { keepalive?: boolean }) =>
+      saveSedgChanges(year, changes as SedgChanges, options),
+    [year],
+  )
+  const apply = useCallback(
+    (changes: ReportChanges<SedgValue>, saved?: SedgSaved) => {
+      applyChanges(queryClient, companyId, year, changes as SedgChanges, saved)
+      // The intensity (E1.7) is worked out from these: fetch the figures again
+      if (saved && Object.keys(changes.answers ?? {}).some((key) => FIGURE_INPUTS.has(key))) {
+        void refreshFigures(queryClient, companyId, year)
+      }
+    },
+    [companyId, queryClient, year],
+  )
+  const autosave = useAutosave<SedgValue, SedgSaved>({ save, apply })
   const [downloading, setDownloading] = useState(false)
   const disclosures = disclosuresFor(report.level)
   const hasValue = (field: SedgDisclosure['fields'][number]) => shownValue(report, field) !== undefined
@@ -135,9 +163,18 @@ function ReportForm({ report, companyId }: { report: SedgReport; companyId: stri
       />
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-        <LevelControl level={report.level} onChange={autosave.changeLevel} />
-        <SaveLine status={autosave.status} report={report} onRetry={() => void autosave.flush()} />
-        <HistorySheet companyId={companyId} year={report.year} />
+        <LevelControl level={report.level} onChange={(level) => autosave.changeSetting('level', level)} />
+        <SaveLine
+          status={autosave.status}
+          updatedAt={report.updatedAt}
+          updatedBy={report.updatedBy}
+          onRetry={() => void autosave.flush()}
+        />
+        <HistorySheet
+          title={`the ${report.year} report`}
+          query={sedgHistoryQueryOptions(companyId, report.year)}
+          partLabel={(part) => (part === 'Level' ? 'Report level' : part === 'General' ? 'General information' : part)}
+        />
       </div>
 
       <BaselineLine report={report} canSet={can(role, 'organization', 'update')} />
@@ -229,39 +266,6 @@ function LevelControl({ level, onChange }: { level: SedgLevel; onChange: (level:
   )
 }
 
-/** "Saved · edited by Aisyah, 2 minutes ago", "Saving...", or a failed save with Retry */
-function SaveLine({ status, report, onRetry }: { status: SaveStatus; report: SedgReport; onRetry: () => void }) {
-  if (status.state === 'failed') {
-    return (
-      <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
-        <AlertCircle className="size-4" aria-hidden />
-        Couldn&apos;t save: {status.message}
-        <Button variant="outline" size="sm" className="h-7 rounded-full" onClick={onRetry}>
-          Retry
-        </Button>
-      </p>
-    )
-  }
-  const busy = status.state === 'waiting' || status.state === 'saving'
-  return (
-    <p className="flex items-center gap-1.5 text-sm text-muted-foreground" aria-live="polite">
-      {busy ? (
-        <>
-          <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
-          Saving...
-        </>
-      ) : report.updatedAt ? (
-        <>
-          <Check className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
-          Saved · edited by {report.updatedBy?.name ?? 'a former member'}, {editedWhen(report.updatedAt)}
-        </>
-      ) : (
-        'Not started yet'
-      )}
-    </p>
-  )
-}
-
 /** The year reductions are measured against (a company setting, set by Admins) */
 function BaselineLine({ report, canSet }: { report: SedgReport; canSet: boolean }) {
   if (report.level === 'basic') return null // Basic has no reductions
@@ -325,7 +329,7 @@ function DisclosureRow({
   disclosure: SedgDisclosure
   report: SedgReport
   complete: boolean
-  autosave: ReturnType<typeof useAutosave>
+  autosave: Autosave<SedgValue>
 }) {
   const titleId = `sedg-${disclosure.code}`
   return (
