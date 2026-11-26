@@ -19,7 +19,7 @@ The CI workflow (`.github/workflows/ci.yml`) runs on the merge commit:
    2. updates the database (new migrations, emission factor library);
    3. uploads the new version to Vercel **without making it live**;
    4. smoke-tests the new version at its own private address;
-   5. makes it live (`vercel promote`);
+   5. makes it live (Vercel's promote API; `vercel promote` fails for this token);
    6. checks that the live address now runs this commit and works.
 
 If anything fails before step 5, the live site keeps running the previous

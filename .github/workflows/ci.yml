@@ -260,8 +260,38 @@ jobs:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: node scripts/smoke-test.mjs "${{ steps.upload.outputs.url }}" --wait 120 --expect-version "$HUB_VERSION"
 
+      # Vercel's API directly, the same two calls `vercel promote` makes. The CLI
+      # first looks up the token's user (/v2/user), which answers "User not
+      # found (404)" for this token, so `vercel promote` can't be used here.
       - name: Make it live
-        run: vercel promote "${{ steps.upload.outputs.url }}" --yes --timeout 5m --token "$VERCEL_TOKEN"
+        env:
+          DEPLOYMENT_URL: ${{ steps.upload.outputs.url }}
+        run: |
+          api=https://api.vercel.com
+          team=""
+          case "$VERCEL_ORG_ID" in team_*) team="teamId=$VERCEL_ORG_ID" ;; esac
+          call() { curl -s -o response.json -w '%{http_code}' -H "Authorization: Bearer $VERCEL_TOKEN" "$@"; }
+          # A field of the answer: "id", or "error" (the error, or the whole answer)
+          field() {
+            node -e 'let r = {}; try { r = JSON.parse(require("fs").readFileSync("response.json", "utf8")) } catch {}
+              const v = process.argv[1] === "id" ? r.id : (r.error ?? r)
+              console.log(typeof v === "string" ? v : JSON.stringify(v ?? ""))' "$1"
+          }
+
+          status=$(call "$api/v13/deployments/${DEPLOYMENT_URL#https://}?$team")
+          id=$(field id)
+          if [ "$status" != 200 ] || [ -z "$id" ]; then
+            echo "::error::Couldn't look up the new version (HTTP $status): $(field error)"
+            exit 1
+          fi
+
+          status=$(call -X POST "$api/v10/projects/$VERCEL_PROJECT_ID/promote/$id?$team")
+          case "$status" in
+            200|201) echo "Promoted $id" ;;
+            202) echo "Promotion of $id queued (Vercel finishes it shortly)" ;;
+            *) echo "::error::Vercel refused to promote $id (HTTP $status): $(field error)"; exit 1 ;;
+          esac
+          rm -f response.json
 
       - name: Check the live site
         run: node scripts/smoke-test.mjs "$APP_URL" --wait 180 --expect-version "$HUB_VERSION"
