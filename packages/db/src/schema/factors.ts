@@ -140,11 +140,13 @@ export const companySettings = pgTable('company_settings', {
   sector: text(),
   /** New entries start Pending and need a Manager/Admin to verify them (false: verified automatically) */
   requireVerification: boolean().notNull().default(true),
+  /** The year reductions are measured against (reports, later the dashboard and roadmap); null until chosen */
+  baselineYear: smallint(),
   updatedAt: timestamp({ withTimezone: true })
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
-})
+}, (table) => [check('company_settings_baseline_year_check', sql`${table.baselineYear} between 1990 and 2100`)])
 
 /*
   The emission sources a company tracks: what the Add emissions picker offers.

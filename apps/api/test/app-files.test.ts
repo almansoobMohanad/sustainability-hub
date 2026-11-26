@@ -46,6 +46,13 @@ describe('serveAppFiles', () => {
     }
   })
 
+  test('scripts: our own files and WebAssembly (PDFs) only, never inline or eval', async () => {
+    const policy = (await app.request('/')).headers.get('content-security-policy') ?? ''
+    const scripts = policy.split('; ').find((part) => part.startsWith('script-src '))
+    expect(scripts).toBe("script-src 'self' 'wasm-unsafe-eval'")
+    expect(policy).toContain("frame-ancestors 'none'")
+  })
+
   test('code files are cached for a year; the compressed copy goes to browsers that accept it', async () => {
     const plain = await app.request('/assets/index-abc123.js')
     expect(plain.status).toBe(200)

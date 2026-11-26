@@ -10,6 +10,7 @@ import { Input } from '@hub/ui/components/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@hub/ui/components/select'
 import { Skeleton } from '@hub/ui/components/skeleton'
 import { toast } from '@hub/ui/components/sonner'
+import { ENTRY_LIMITS } from '@hub/shared/emissions'
 import { ROLE_DESCRIPTIONS, can } from '@hub/shared/permissions'
 import { SECTORS, SECTOR_INFO, type Sector } from '@hub/shared/sectors'
 import { PageHeader } from '@/components/page-header'
@@ -23,7 +24,7 @@ import { meQueryOptions, useMe } from './me'
 import { RolePill } from './role-pill'
 
 /*
-  Company settings: name, sector, how entries are verified (Admins change
+  Company settings: name, sector, how entries are verified, the baseline year (Admins change
   them; everyone sees them) and your own role. One flat section per setting,
   each saved on its own (its Save button appears once something changed);
   outcomes are toasts.
@@ -61,6 +62,14 @@ export function CompanySettingsPage() {
 
           <PageSection id="settings-verification" title="Verification" info="How new emission entries are reviewed. A change applies to new entries only.">
             <VerificationSetting companyId={company.id} canEdit={canEdit} />
+          </PageSection>
+
+          <PageSection
+            id="settings-baseline"
+            title="Baseline year"
+            info="The year your reductions are measured against, e.g. the first year with complete data. The SEDG report uses it for the emissions, energy and water reductions."
+          >
+            <BaselineSetting companyId={company.id} canEdit={canEdit} />
           </PageSection>
 
           <PageSection id="settings-role" title="Your role" info="Roles are given and changed on the Members page.">
@@ -247,5 +256,57 @@ function VerificationSetting({ companyId, canEdit }: { companyId: string; canEdi
         </Button>
       ) : null}
     </>
+  )
+}
+
+const NO_BASELINE = 'none'
+
+/*
+  The baseline year: reductions in reports (SEDG E1.3, E1.4, E1.6, E2.2, E3.2)
+  compare a year with it. Any year from the first one entries allow up to this
+  year; "Not set" turns the reductions off.
+*/
+function BaselineSetting({ companyId, canEdit }: { companyId: string; canEdit: boolean }) {
+  const settings = useQuery(companySettingsQueryOptions(companyId))
+  const update = useUpdateCompanySettings(companyId)
+  const [choice, setChoice] = useState<string | null>(null)
+  const saved = settings.data?.baselineYear ?? null
+  const selected = choice ?? (saved === null ? NO_BASELINE : String(saved))
+  const thisYear = new Date().getFullYear()
+  const years = Array.from({ length: thisYear - ENTRY_LIMITS.firstYear + 1 }, (_, index) => thisYear - index)
+
+  async function save() {
+    try {
+      await update.mutateAsync({ baselineYear: selected === NO_BASELINE ? null : Number(selected) })
+      setChoice(null)
+      toast.success(selected === NO_BASELINE ? 'Baseline year removed' : `Baseline year set to ${selected}`)
+    } catch (error) {
+      toast.error(errorMessage(error))
+    }
+  }
+
+  if (settings.isPending) return <Skeleton className="h-10 w-full max-w-sm" />
+  if (!canEdit) return <p className="text-sm">{saved ?? 'Not set'}</p>
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row">
+      <Select value={selected} onValueChange={setChoice}>
+        <SelectTrigger aria-label="Baseline year" className="w-full data-[size=default]:h-10 sm:max-w-48">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="max-h-72">
+          <SelectItem value={NO_BASELINE}>Not set</SelectItem>
+          {years.map((year) => (
+            <SelectItem key={year} value={String(year)}>
+              {year}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {choice !== null && choice !== (saved === null ? NO_BASELINE : String(saved)) ? (
+        <Button className="h-10 w-fit rounded-full px-5" onClick={save} disabled={update.isPending}>
+          {update.isPending ? 'Saving...' : 'Save'}
+        </Button>
+      ) : null}
+    </div>
   )
 }

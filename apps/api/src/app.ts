@@ -13,6 +13,7 @@ import { clientIp } from './auth/client-ip'
 import { authOptionsRoutes } from './routes/auth-options'
 import { companyRoutes } from './routes/company'
 import { emissionRoutes } from './routes/emissions'
+import { sedgRoutes } from './routes/sedg'
 import { factorLibraryRoutes } from './routes/factor-library'
 import { healthRoutes } from './routes/health'
 import { meRoutes } from './routes/me'
@@ -81,6 +82,7 @@ export function createApp({
   app.route('/', factorLibraryRoutes({ db, auth }))
   app.route('/', companyRoutes({ db, auth }))
   app.route('/', emissionRoutes({ db, auth }))
+  app.route('/', sedgRoutes({ db, auth }))
 
   // Authentication: everything under /api/auth is handled by Better Auth.
   // Auth requests are small; refuse big bodies before they're read.

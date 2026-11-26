@@ -10,3 +10,5 @@ export * from './auth'
 export * from './factors'
 // Emission entries, their audit trail and spreadsheet imports
 export * from './emissions'
+// Disclosure reports (SEDG) and their edit history
+export * from './reports'
