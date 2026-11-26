@@ -29,6 +29,9 @@ COPY . .
 # Address of the public website for "Back to website" (no link when empty)
 ARG VITE_SITE_URL=""
 ENV VITE_SITE_URL=$VITE_SITE_URL
+# The git commit being built, reported by /api/health (--build-arg HUB_VERSION=<commit>)
+ARG HUB_VERSION=""
+ENV HUB_VERSION=$HUB_VERSION
 RUN pnpm --filter @hub/app build \
  && node scripts/precompress.mjs apps/app/dist \
  && pnpm --filter @hub/api build

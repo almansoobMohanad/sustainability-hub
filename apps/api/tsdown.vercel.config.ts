@@ -11,6 +11,8 @@ export default defineConfig({
   outDir: 'dist-vercel',
   format: 'esm',
   platform: 'node',
+  // The commit being built, for /api/health (src/version.ts): tsdown replaces process.env.HUB_VERSION in the code; empty = unknown
+  env: { HUB_VERSION: process.env.HUB_VERSION ?? '' },
   deps: {
     alwaysBundle: [/./],
     onlyBundle: false,
