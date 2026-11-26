@@ -27,8 +27,9 @@ test('who may do what', () => {
       'emissions:create',
       'emissions:verify',
       'sources:update',
+      'reports:update',
     ],
-    manager: ['emissions:create', 'emissions:verify', 'sources:update'],
+    manager: ['emissions:create', 'emissions:verify', 'sources:update', 'reports:update'],
     member: ['emissions:create'],
   })
 })
