@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./emissions": "./src/emissions.ts",
+    "./esg-ready": "./src/esg-ready.ts",
     "./imports": "./src/imports.ts",
     "./permissions": "./src/permissions.ts",
     "./sedg": "./src/sedg.ts",
