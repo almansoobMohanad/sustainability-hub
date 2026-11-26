@@ -71,7 +71,7 @@ describe('company settings', () => {
     for (const person of [company.admin, manager, member]) {
       const settings = await person.get('/v1/company/settings')
       expect(settings.status).toBe(200)
-      expect(settings.body).toEqual({ sector: 'manufacturing', requireVerification: true })
+      expect(settings.body).toEqual({ sector: 'manufacturing', requireVerification: true, baselineYear: null })
     }
   })
 
@@ -79,7 +79,7 @@ describe('company settings', () => {
     expect((await manager.patch('/v1/company/settings', { sector: 'retail' })).status).toBe(403)
     expect((await member.patch('/v1/company/settings', { requireVerification: false })).status).toBe(403)
     const changed = await company.admin.patch('/v1/company/settings', { sector: 'office' })
-    expect(changed.body).toEqual({ sector: 'office', requireVerification: true })
+    expect(changed.body).toEqual({ sector: 'office', requireVerification: true, baselineYear: null })
     await company.admin.patch('/v1/company/settings', { sector: 'manufacturing' })
   })
 

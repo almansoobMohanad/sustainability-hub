@@ -66,15 +66,21 @@ function cacheFor(value: string): MiddlewareHandler {
  * profile photos from Google sign-in. No inline or eval'd scripts (the main
  * defence if someone ever manages to inject HTML); inline styles are allowed
  * because UI components set positions and sizes with them.
+ *
+ * Two allowances for the PDF reports (@react-pdf/renderer, built in the
+ * browser): its layout engine is WebAssembly that it loads from a data: URL
+ * with fetch, so 'wasm-unsafe-eval' (compiling WebAssembly only; JavaScript
+ * eval stays blocked) and data: for connect-src (reading an inline data: URL;
+ * it can't send anything anywhere).
  */
 export function appContentSecurityPolicy({ https }: { https: boolean }) {
   return [
     "default-src 'self'",
-    "script-src 'self'",
+    "script-src 'self' 'wasm-unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://*.googleusercontent.com",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    "connect-src 'self' data:",
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",

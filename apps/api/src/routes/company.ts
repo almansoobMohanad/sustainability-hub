@@ -22,7 +22,7 @@ const MAX_COMPANY_SOURCES = 300
   Always the session's active company (requireCompany), never an id from the request.
 
     GET    /api/v1/company/settings                 everyone in the company
-    PATCH  /api/v1/company/settings                 Admin (sector, verification)
+    PATCH  /api/v1/company/settings                 Admin (sector, verification, baseline year)
     GET    /api/v1/company/sources?year=2026        everyone: the sources + factors for that year (max 300)
     POST   /api/v1/company/sources                  Admin, Manager: add sources
     DELETE /api/v1/company/sources/{sourceId}       Admin, Manager: stop tracking one
@@ -33,6 +33,8 @@ const SettingsSchema = z
     sector: z.enum(SECTORS).nullable(),
     /** New entries start Pending and need a Manager/Admin to verify them (false: verified automatically) */
     requireVerification: z.boolean(),
+    /** The year reductions are measured against (SEDG reductions); null until chosen */
+    baselineYear: z.number().int().nullable(),
   })
   .openapi('CompanySettings')
 
@@ -63,7 +65,11 @@ const patchSettingsRoute = createRoute({
       content: {
         'application/json': {
           schema: z
-            .object({ sector: z.enum(SECTORS).nullable().optional(), requireVerification: z.boolean().optional() })
+            .object({
+              sector: z.enum(SECTORS).nullable().optional(),
+              requireVerification: z.boolean().optional(),
+              baselineYear: z.number().int().min(1990).nullable().optional(),
+            })
             .refine((changes) => Object.keys(changes).length > 0, 'Nothing to change'),
         },
       },
@@ -157,10 +163,18 @@ export function companyRoutes({ db, auth }: { db: Database; auth: Auth }) {
 
   async function readSettings(companyId: string) {
     const [row] = await db
-      .select({ sector: companySettings.sector, requireVerification: companySettings.requireVerification })
+      .select({
+        sector: companySettings.sector,
+        requireVerification: companySettings.requireVerification,
+        baselineYear: companySettings.baselineYear,
+      })
       .from(companySettings)
       .where(eq(companySettings.organizationId, companyId))
-    return { sector: isSector(row?.sector) ? row.sector : null, requireVerification: row?.requireVerification ?? true }
+    return {
+      sector: isSector(row?.sector) ? row.sector : null,
+      requireVerification: row?.requireVerification ?? true,
+      baselineYear: row?.baselineYear ?? null,
+    }
   }
 
   app.openapi(getSettingsRoute, async (c) => c.json(await readSettings(c.var.company.id), 200))
@@ -168,6 +182,9 @@ export function companyRoutes({ db, auth }: { db: Database; auth: Auth }) {
   app.openapi(patchSettingsRoute, async (c) => {
     if (!can(c.var.company.role, 'organization', 'update')) return c.json(forbidden, 403)
     const changes = c.req.valid('json')
+    if (changes.baselineYear && changes.baselineYear > currentYear()) {
+      return c.json({ error: { code: 'invalid_request', message: "The baseline year can't be in the future." } }, 400)
+    }
     await db
       .insert(companySettings)
       .values({ organizationId: c.var.company.id, ...changes })
