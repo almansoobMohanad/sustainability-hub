@@ -8,6 +8,7 @@ import {
 } from '@hub/shared/sedg'
 import type { SedgReport } from './queries'
 import type { PdfInput } from './sedg-pdf'
+import { downloadPdf } from '../reports/download-pdf'
 import { formatSedgValue, unitOf } from './style'
 
 /** What the report shows for a field: what someone entered, else the calculated figure */
@@ -43,27 +44,11 @@ export function pdfInput(report: SedgReport): PdfInput {
   }
 }
 
-/**
- * Builds the PDF in the browser and downloads it. The PDF library (large) is
- * loaded on the first click only, as its own file.
- */
+/** The SEDG report as a PDF (built in the browser, see reports/download-pdf.ts) */
 export async function downloadSedgPdf(report: SedgReport) {
-  const [{ pdf }, { SedgDocument }] = await Promise.all([import('@react-pdf/renderer'), import('./sedg-pdf')])
   const input = pdfInput(report)
-  // If the PDF engine ever stalls (it did when the browser blocked its WebAssembly), say so instead of waiting forever
-  const blob = await Promise.race([
-    pdf(createElement(SedgDocument, input) as Parameters<typeof pdf>[0]).toBlob(),
-    new Promise<never>((_, reject) =>
-      window.setTimeout(() => reject(new Error('Creating the PDF took too long. Please try again.')), 60_000),
-    ),
-  ])
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `SEDG ${report.year} - ${input.companyName || 'report'}.pdf`.replace(/[\\/:*?"<>|]+/g, ' ')
-  document.body.append(link)
-  link.click()
-  link.remove()
-  // Give the browser a moment to start the download before the file is released
-  window.setTimeout(() => URL.revokeObjectURL(url), 30_000)
+  await downloadPdf(
+    async () => createElement((await import('./sedg-pdf')).SedgDocument, input),
+    `SEDG ${report.year} - ${input.companyName || 'report'}.pdf`,
+  )
 }

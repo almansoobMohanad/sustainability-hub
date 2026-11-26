@@ -1,5 +1,6 @@
 import { Document, Font, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
 import { SEDG_LEVEL_LABELS, SEDG_PILLAR_LABELS, type SedgLevel, type SedgPillar } from '@hub/shared/sedg'
+import { printable } from '../reports/pdf-text'
 import { SEDG_COLORS, SEDG_GENERAL_COLORS } from './style'
 
 /*
@@ -75,7 +76,7 @@ function GeneralTable({ rows }: { rows: PdfInput['general'] }) {
       {rows.map((row) => (
         <View key={row.label} style={styles.row} wrap={false}>
           <Text style={[styles.cell, styles.bold, { width: 200, backgroundColor: SEDG_GENERAL_COLORS.label }]}>{row.label}</Text>
-          <Text style={[styles.cell, { width: 578 }, row.value ? {} : styles.empty]}>{row.value || NOT_REPORTED}</Text>
+          <Text style={[styles.cell, { width: 578 }, row.value ? {} : styles.empty]}>{printable(row.value) || NOT_REPORTED}</Text>
         </View>
       ))}
     </View>
@@ -133,7 +134,7 @@ function PillarPage({ input, pillar, disclosures }: { input: PdfInput } & PdfInp
                   <View key={index} style={[styles.row, { flexGrow: 1 }]} wrap={false}>
                     <Text style={[styles.cell, { width: COLUMNS.indicator }]}>{row.indicator}</Text>
                     <Text style={[styles.cell, { width: COLUMNS.value }, row.value ? {} : styles.empty]}>
-                      {row.value || NOT_REPORTED}
+                      {printable(row.value) || NOT_REPORTED}
                     </Text>
                     <Text style={[styles.cell, { width: COLUMNS.unit }]}>{row.unit}</Text>
                   </View>

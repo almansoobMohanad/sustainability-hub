@@ -1,5 +1,15 @@
 import type { LinkProps } from '@tanstack/react-router'
-import { Building2, CirclePlus, FileText, LayoutDashboard, ListChecks, Rows3, Users, type LucideIcon } from 'lucide-react'
+import {
+  Building2,
+  CirclePlus,
+  ClipboardCheck,
+  FileText,
+  LayoutDashboard,
+  ListChecks,
+  Rows3,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 import type { Resource } from '@hub/shared/permissions'
 
 /*
@@ -42,6 +52,12 @@ export const appNav: AppNavGroup[] = [
         label: 'SEDG disclosure',
         to: '/reports/sedg',
         icon: FileText,
+        permission: { resource: 'reports', action: 'update' },
+      },
+      {
+        label: 'ESG Ready',
+        to: '/reports/esg-ready',
+        icon: ClipboardCheck,
         permission: { resource: 'reports', action: 'update' },
       },
     ],
